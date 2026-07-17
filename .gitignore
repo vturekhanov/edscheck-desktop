@@ -1,0 +1,4 @@
+build/
+dist/
+.jdk/
+lib/kalkancrypt-*.jar

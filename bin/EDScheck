@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+_src="$0"
+while [ -h "$_src" ]; do
+    _dir="$(cd -P "$(dirname "$_src")" && pwd)"
+    _src="$(readlink "$_src")"
+    case "$_src" in
+        /*) ;;
+        *) _src="$_dir/$_src" ;;
+    esac
+done
+DIR="$(cd -P "$(dirname "$_src")" && pwd)"
+unset _src _dir
+REPO_ROOT="$(cd "$DIR/.." && pwd)"
+
+CORE_JAR="$REPO_ROOT/dist/eds-check.jar"
+GUI_JAR="$REPO_ROOT/dist/eds-check-gui.jar"
+KALKAN_JAR="$REPO_ROOT/lib/kalkancrypt-0.7.6-certified.jar"
+LIB_DIR="$REPO_ROOT/lib"
+
+resolve_jdk_bin() {
+    if [ -x "$REPO_ROOT/.jdk/bin/java" ]; then
+        echo "$REPO_ROOT/.jdk/bin"
+        return 0
+    fi
+    if [ -n "${JAVA_HOME:-}" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+        echo "$JAVA_HOME/bin"
+        return 0
+    fi
+    if command -v java >/dev/null 2>&1; then
+        dirname "$(command -v java)"
+        return 0
+    fi
+    return 1
+}
+
+JDK_BIN="$(resolve_jdk_bin)" || {
+    echo "ошибка: не найден JDK (проверены .jdk/bin, \$JAVA_HOME/bin, PATH)" >&2
+    echo "  распакуйте портативный JDK 21 (Eclipse Temurin) в .jdk/ в корне репозитория," >&2
+    echo "  либо задайте JAVA_HOME на существующий JDK 21+." >&2
+    exit 1
+}
+JDK_JAVA="$JDK_BIN/java"
+
+if [ ! -f "$CORE_JAR" ] || [ ! -f "$GUI_JAR" ]; then
+    echo "ошибка: не собраны jar'ы ядра/GUI" >&2
+    echo "  сначала соберите: ./build.sh && ./build-gui.sh" >&2
+    exit 1
+fi
+
+shopt -s nullglob
+LIB_JARS=("$LIB_DIR"/*.jar)
+shopt -u nullglob
+
+CP="$GUI_JAR:$CORE_JAR:$KALKAN_JAR"
+if [ "${#LIB_JARS[@]}" -gt 0 ]; then
+    CP="$CP:$(IFS=:; echo "${LIB_JARS[*]}")"
+fi
+
+cd "$REPO_ROOT"
+
+exec "$JDK_JAVA" -cp "$CP" -Dkz.edscheck.kalkanJar="$KALKAN_JAR" -Dkz.edscheck.libDir="$LIB_DIR" \
+    kz.edscheck.gui.GuiMain

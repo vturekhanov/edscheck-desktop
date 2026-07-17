@@ -1,0 +1,244 @@
+{
+  "_about": "Единый источник правды по доверенному хранилищу eds-check. infra.trusted_certs(ca, env) берёт записи class=active с совпавшим env; provision_ca_store.sh ставит весь active (системный стор env-агностичен — разделение env держит trusted_certs, т.к. цепочку якорим по содержимому сами). Терминология: role=root — КУЦ (Корневой УЦ), role=ca — УЦ под КУЦ (сейчас только НУЦ).",
+  "schema_version": 1,
+  "fingerprint": "sha256 над DER (кодировка файла нормализуется к DER перед хэшированием)",
+  "fields": "file, sha256, role(root|ca), class(active|excluded), env(prod|test), reason(legacy-era|orphan-no-chain), subject_cn, not_before, not_after, sources[], notes",
+  "certs": [
+    {
+      "file": "certs/prod/root_gost.pem",
+      "sha256": "9ab210e54e6b0343321131202d9edcc2598f598cfdd9ee4ec1056021ab2e9759",
+      "role": "root",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "НЕГІЗГІ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (GOST)",
+      "not_before": "2015-07-27T05:20:49Z",
+      "not_after": "2025-07-27T05:20:49Z",
+      "sources": [
+        "https://root.gov.kz/cert/root_gost.cer",
+        "SDK:C/Linux/ca-certs/ca-certs_old/production.zip"
+      ],
+      "notes": "РМК-поколение (2015–2025), ГОСТ-2004"
+    },
+    {
+      "file": "certs/prod/root_rsa.pem",
+      "sha256": "a7064abc5699827f370c67b09f1a1bfd7ad5e1514d471223df209c08300ea972",
+      "role": "root",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "НЕГІЗГІ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (RSA)",
+      "not_before": "2015-07-27T05:22:53Z",
+      "not_after": "2025-07-27T05:22:53Z",
+      "sources": [
+        "https://root.gov.kz/cert/root_rsa.cer",
+        "SDK:C/Linux/ca-certs/ca-certs_old/production.zip"
+      ],
+      "notes": "РМК-поколение (2015–2025)"
+    },
+    {
+      "file": "certs/prod/nca_gost.pem",
+      "sha256": "908521d0531e5645e64b34d3588374a3a83582c860e5f7293a04c41217e8cc18",
+      "role": "ca",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "ҰЛТТЫҚ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (GOST)",
+      "not_before": "2018-08-08T04:55:58Z",
+      "not_after": "2025-06-25T04:55:58Z",
+      "sources": [
+        "https://pki.gov.kz/cert/nca_gost.crt",
+        "SDK:C/Linux/ca-certs/ca-certs_old/production.zip"
+      ],
+      "notes": "РМК НУЦ (2018–2025), ГОСТ-2004"
+    },
+    {
+      "file": "certs/prod/nca_rsa.pem",
+      "sha256": "34d1b311a9873191ae3382805df51e0a5da23315c512a8deeb885668ceeb5834",
+      "role": "ca",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "ҰЛТТЫҚ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (RSA)",
+      "not_before": "2018-08-08T04:26:36Z",
+      "not_after": "2025-06-25T04:26:36Z",
+      "sources": [
+        "https://pki.gov.kz/cert/nca_rsa.crt",
+        "SDK:C/Linux/ca-certs/ca-certs_old/production.zip"
+      ],
+      "notes": "РМК НУЦ (2018–2025)"
+    },
+    {
+      "file": "certs/prod/root_rsa_2020.cer",
+      "sha256": "9ba06354b626641715182e4d07c9dbaa1777720fa795d03174ffc68876535dcd",
+      "role": "root",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "НЕГІЗГІ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (RSA)",
+      "not_before": "2020-09-08T10:04:54Z",
+      "not_after": "2045-09-08T10:04:54Z",
+      "sources": [
+        "https://root.gov.kz/cert/root_rsa_2020.cer",
+        "https://pki.gov.kz/cert/root_rsa_2020.cer"
+      ],
+      "notes": "Корень RSA 2020; под ним промежуточный nca_rsa_2022"
+    },
+    {
+      "file": "certs/prod/root_gost_2022.pem",
+      "sha256": "af77725f8328bb24f89d81da3acdf7cee4324248538b7ba2cd2a860517fb9dca",
+      "role": "root",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "НЕГІЗГІ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (GOST) 2022",
+      "not_before": "2022-06-15T04:56:12Z",
+      "not_after": "2045-09-08T04:56:12Z",
+      "sources": [
+        "https://root.gov.kz/cert/root_gost2015_2022.cer",
+        "https://pki.gov.kz/cert/root_gost_2022.cer",
+        "SDK:C/Linux/ca-certs/ca-certs_new/production2022.zip"
+      ],
+      "notes": "Корень ГОСТ-2015 (Streebog), 2022"
+    },
+    {
+      "file": "certs/prod/nca_gost_2022.pem",
+      "sha256": "32c7d233a42703a327f3025543a05b930e3f39a786c68dfa196baa86d5618524",
+      "role": "ca",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "ҰЛТТЫҚ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (GOST) 2022",
+      "not_before": "2022-06-15T05:01:09Z",
+      "not_after": "2045-09-07T05:01:09Z",
+      "sources": [
+        "https://pki.gov.kz/cert/nca_gost_2022.cer",
+        "SDK:C/Linux/ca-certs/ca-certs_new/production2022.zip"
+      ],
+      "notes": "НУЦ ГОСТ-2015 2022; под root_gost_2022"
+    },
+    {
+      "file": "certs/prod/nca_rsa_2022.cer",
+      "sha256": "84fb799a66140950818c056a5d9730acc2a7622cdd4ef0d47113b132fb892905",
+      "role": "ca",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "ҰЛТТЫҚ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (RSA) 2022",
+      "not_before": "2022-09-22T10:38:15Z",
+      "not_after": "2045-09-07T10:04:54Z",
+      "sources": [
+        "https://pki.gov.kz/cert/nca_rsa_2022.cer"
+      ],
+      "notes": "НУЦ RSA 2022; под root_rsa_2020"
+    },
+    {
+      "file": "certs/prod/root_gost_2020.cer",
+      "sha256": "c48164ab5ccaaee6b938299a1e3aeebd6f698bb2bd716a0f0d85befc46166aa2",
+      "role": "root",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "НЕГІЗГІ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (GOST)",
+      "not_before": "2020-09-08T09:54:36Z",
+      "not_after": "2045-09-08T09:54:36Z",
+      "sources": [
+        "https://root.gov.kz/cert/root_gost_2020.cer"
+      ],
+      "notes": "КУЦ-корень ГОСТ (2020–2045); под ним УЦ BTS Digital (btsd_gost) и УЦГО (ucgo_gost)."
+    },
+    {
+      "file": "certs/prod/ucgo_gost.cer",
+      "sha256": "eb5a5318299db447a46619d2a541f026b52c1fce8a1d371262da8f6f2d7bb6f5",
+      "role": "ca",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "Удостоверяющий центр Государственных органов",
+      "not_before": "2022-07-12T04:44:51Z",
+      "not_after": "2045-09-07T04:44:51Z",
+      "sources": [
+        "https://ucgo.gov.kz/cert/ucgo_root.zip"
+      ],
+      "notes": "УЦ государственных органов (ГОСТ-2004); под КУЦ root_gost_2020. В CLI/JSON — ucgo."
+    },
+    {
+      "file": "certs/prod/btsd_gost.cer",
+      "sha256": "74bb80edf34f4594e5e69b79029c64214e67630e3d16b82f952ab6e5956c5fa8",
+      "role": "ca",
+      "class": "active",
+      "env": "prod",
+      "subject_cn": "BTSD CA",
+      "not_before": "2019-08-01T10:33:33Z",
+      "not_after": "2029-07-29T10:33:33Z",
+      "sources": [
+        "https://root.gov.kz/cert/uc/btsd_gost.cer"
+      ],
+      "notes": "УЦ BTS Digital (ГОСТ-2004); под КУЦ root_gost_2020. В CLI/JSON — btsd."
+    },
+    {
+      "file": null,
+      "sha256": "d38f9a121cdb803ea40f00fa4f01f36a76bdc35f9b9fcb2211d1ac32c738d55c",
+      "role": "root",
+      "class": "excluded",
+      "env": "prod",
+      "reason": "legacy-era",
+      "subject_cn": "Корневой Удостоверяющий Центр Республики Казахстан",
+      "not_before": "2011-03-30T05:32:51Z",
+      "not_after": "2021-03-30T05:32:51Z",
+      "sources": [
+        "https://root.gov.kz/cert/kuc_old.cer"
+      ],
+      "notes": "Ранний КУЦ РК (Минсвязи), 2011–2021, истёк. Документируем, в траст не кладём."
+    },
+    {
+      "file": null,
+      "sha256": "430ef33555a1fa3c1c56452ef3b0d57fdd4b32e2a2782236ced0bf182b6d8b6d",
+      "role": "root",
+      "class": "excluded",
+      "env": "prod",
+      "reason": "legacy-era",
+      "subject_cn": "НУЦ РК (ГОСТ)",
+      "not_before": "2011-12-28T05:15:09Z",
+      "not_after": "2016-12-28T05:15:09Z",
+      "sources": [
+        "https://pki.gov.kz/docs/razrabotka/Archive_cer.zip"
+      ],
+      "notes": "Самоподписанный НУЦ 2011–2016 (плоская эпоха), ГОСТ-OID 1.3.6.1.4.1.6801.* — крипто не поддержано (стена)."
+    },
+    {
+      "file": null,
+      "sha256": "4a6e7537e687a40a0ed2ca09feb0679f777ae855ba8fd180541c8463840311b5",
+      "role": "root",
+      "class": "excluded",
+      "env": "prod",
+      "reason": "legacy-era",
+      "subject_cn": "НУЦ РК (RSA)",
+      "not_before": "2011-12-28T05:12:28Z",
+      "not_after": "2016-12-28T05:12:28Z",
+      "sources": [
+        "https://pki.gov.kz/docs/razrabotka/Archive_cer.zip"
+      ],
+      "notes": "Самоподписанный НУЦ 2011–2016 (плоская эпоха), sha1-RSA — крипто не поддержано (стена)."
+    },
+    {
+      "file": "certs/test/root_test_gost_2022.cer",
+      "sha256": "b995e79e7c07429f8f79e185451e5599ce342ac720000f01b3854fdfa03031a6",
+      "role": "root",
+      "class": "active",
+      "env": "test",
+      "subject_cn": "НЕГІЗГІ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (GOST) TEST 2022",
+      "not_before": "2022-07-07T09:05:52Z",
+      "not_after": "2032-07-07T09:05:52Z",
+      "sources": [
+        "https://root.gov.kz/cert/root_test_gost_2022.cer",
+        "SDK:Keys and Certs/CA_Test/ROOT/root_test_gost_2022.cer"
+      ],
+      "notes": "Тестовый КУЦ-корень (GOST-2015), окружение test."
+    },
+    {
+      "file": "certs/test/nca_gost2022_test.cer",
+      "sha256": "beeffc0bdb77cd798c35983eb0715f6ef0051cccb71d7cd05505e8a4fb2c6f4d",
+      "role": "ca",
+      "class": "active",
+      "env": "test",
+      "subject_cn": "ҰЛТТЫҚ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ (GOST) TEST 2022",
+      "not_before": "2022-07-07T09:55:23Z",
+      "not_after": "2032-07-04T09:55:23Z",
+      "sources": [
+        "SDK:Keys and Certs/CA_Test/NCA/nca_gost2022_test.cer"
+      ],
+      "notes": "Тестовый НУЦ (GOST-2015), окружение test; под root_test_gost_2022."
+    }
+  ]
+}
