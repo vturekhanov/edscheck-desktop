@@ -4,10 +4,17 @@
 
 > **ВНИМАНИЕ!** Приложение предназначено для предварительной проверки документов. При возникновении сомнений обратитесь за консультацией к [специалисту](https://sigex.kz/blog/2021-01-25-digital-signatures-in-courts/#where-to-find-experts).
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshot-dark.png">
+    <img src="assets/screenshot-light.png" alt="Окно приложения с результатом проверки ЭЦП документа" width="720">
+  </picture>
+</p>
+
 ## Что делает приложение
 
 - Выбор файла кнопкой или перетаскиванием на окно.
-- Attached CMS и Карточках электронного документа `ddcard` проверяются сразу.
+- Attached CMS и [Карточки электронного документа](https://github.com/kaarkz/ddcard) проверяются сразу.
 - Detached CMS (подпись отдельно от документа) приложение распознаёт само и запросит второй файл — сам подписываемый документ.
 - Панель ошибок показывает причину, если файл не подходит для проверки.
 - Светлая/тёмная тема — под системную, с автопереключением на лету.
@@ -16,13 +23,21 @@
 
 ## Сборка из исходников
 
-**Уже есть JDK 21 (или новее) на машине?** Копировать/распаковывать в `.jdk/` необязательно — сборочные и запускающие скрипты сами ищут JDK по приоритету: `.jdk/` (портативный, если положили) → `$JAVA_HOME`/`%JAVA_HOME%` (если задан) → `javac`/`java` из `PATH`. Явных `--release`/`-source` ограничений в коде нет, версия важна только 21 или новее — собирает и запускает всегда один и тот же резолвленный JDK.
+**Уже есть JDK 21 (или новее) на машине?** Копировать/распаковывать в `.jdk/` необязательно — сборочные и запускающие скрипты сами ищут JDK по приоритету: `.jdk/` (портативный, если положили) → `$JAVA_HOME`/`%JAVA_HOME%` (если задан) → `javac`/`java` из `PATH`. Явных `--release`/`-source` ограничений в коде нет, нужна только версия 21 или новее.
 
 Требуется интернет-доступ для шага 1.
 
 ### 1. Портативный JDK 21
 
-Linux x64:
+macOS (Apple Silicon):
+```sh
+mkdir -p .jdk
+curl -fL -o /tmp/temurin21.tar.gz "https://api.adoptium.net/v3/binary/latest/21/ga/mac/aarch64/jdk/hotspot/normal/eclipse?project=jdk"
+tar -xzf /tmp/temurin21.tar.gz -C .jdk --strip-components=3
+.jdk/bin/java -version   # ожидается Temurin-21.x.x (LTS)
+```
+
+Linux (x64):
 ```sh
 mkdir -p .jdk
 curl -fL -o /tmp/temurin21.tar.gz "https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/normal/eclipse?project=jdk"
@@ -30,14 +45,7 @@ tar -xzf /tmp/temurin21.tar.gz -C .jdk --strip-components=1
 .jdk/bin/java -version   # ожидается Temurin-21.x.x (LTS)
 ```
 
-macOS (Apple Silicon):
-```sh
-curl -fL -o /tmp/temurin21.tar.gz "https://api.adoptium.net/v3/binary/latest/21/ga/mac/aarch64/jdk/hotspot/normal/eclipse?project=jdk"
-tar -xzf /tmp/temurin21.tar.gz -C .jdk --strip-components=3
-.jdk/bin/java -version   # ожидается Temurin-21.x.x (LTS)
-```
-
-Windows x64:
+Windows (x64):
 Скачать zip-архив [Temurin 21 для Windows x64](https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk) и распаковать в `.jdk\` в корне репозитория так, чтобы получился путь `.jdk\bin\java.exe` (архив, как и на macOS, может быть вложен на один уровень глубже — при необходимости переместите содержимое вложенной папки на уровень выше).
 
 ### 2. KalkanCrypt JCE-провайдер
@@ -54,7 +62,7 @@ kalkancrypt-0.7.6-certified.jar
 
 ### 3. Собрать и запустить
 
-Linux и macOS:
+macOS и Linux:
 ```sh
 ./build.sh && ./build-gui.sh
 bin/EDScheck
@@ -72,7 +80,3 @@ bin\EDScheck.bat
 ## Лицензия
 
 GPL-3.0 — полный текст в [`LICENSE`](LICENSE).
-
-## Изменения
-
-См. [`CHANGELOG.md`](CHANGELOG.md).

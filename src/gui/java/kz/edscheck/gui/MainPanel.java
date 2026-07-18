@@ -172,18 +172,7 @@ public final class MainPanel extends JPanel {
 
     
     private JLabel buildFooter() {
-        
-        
-        
-        
-        
-        Color linkColor = UIManager.getColor("Label.foreground");
-        String link = "<a href=\"" + SPECIALIST_URL + "\" style=\"color: rgb("
-            + linkColor.getRed() + "," + linkColor.getGreen() + "," + linkColor.getBlue() + ");\">"
-            + GuiMessages.get(GuiMsgKey.FOOTER_DISCLAIMER_LINK_TEXT) + "</a>";
-        String text = GuiMessages.get(GuiMsgKey.FOOTER_DISCLAIMER, link);
-
-        JLabel label = new JLabel("<html>" + text + "</html>");
+        JLabel label = new JLabel(footerText());
         
         
         label.setBorder(BorderFactory.createEmptyBorder(8, 4, 8, 4));
@@ -204,6 +193,24 @@ public final class MainPanel extends JPanel {
             }
         });
         return label;
+    }
+
+    
+    private static String footerText() {
+        Color linkColor = UIManager.getColor("Label.foreground");
+        String link = "<a href=\"" + SPECIALIST_URL + "\" style=\"color: rgb("
+            + linkColor.getRed() + "," + linkColor.getGreen() + "," + linkColor.getBlue() + ");\">"
+            + GuiMessages.get(GuiMsgKey.FOOTER_DISCLAIMER_LINK_TEXT) + "</a>";
+        return "<html>" + GuiMessages.get(GuiMsgKey.FOOTER_DISCLAIMER, link) + "</html>";
+    }
+
+    
+    @Override
+    public void updateUI() {
+        super.updateUI();
+        if (footerPane != null) {
+            footerPane.setText(footerText());
+        }
     }
 
     

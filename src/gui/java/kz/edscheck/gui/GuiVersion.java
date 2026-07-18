@@ -2,7 +2,7 @@ package kz.edscheck.gui;
 
 
 public final class GuiVersion {
-    public static final String VALUE = "0.1.11";
+    public static final String VALUE = "0.1.12";
 
     private GuiVersion() {
     }

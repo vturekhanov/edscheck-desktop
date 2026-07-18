@@ -14,6 +14,9 @@ import com.formdev.flatlaf.util.SystemInfo;
 public final class ThemeApplier {
     private static final float FONT_SIZE_DELTA = 2f;
 
+    
+    private static Float baseFontSize;
+
     private ThemeApplier() {
     }
 
@@ -32,7 +35,10 @@ public final class ThemeApplier {
 
         Font base = UIManager.getFont("defaultFont");
         if (base != null) {
-            UIManager.put("defaultFont", base.deriveFont(base.getSize2D() + FONT_SIZE_DELTA));
+            if (baseFontSize == null) {
+                baseFontSize = base.getSize2D();
+            }
+            UIManager.put("defaultFont", base.deriveFont(baseFontSize + FONT_SIZE_DELTA));
         }
     }
 }
