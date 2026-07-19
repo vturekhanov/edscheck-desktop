@@ -6,7 +6,6 @@ import java.util.Map;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class JsonWriter {
     private static final String INDENT_UNIT = "  ";
 
@@ -79,7 +78,6 @@ public final class JsonWriter {
         sb.append("\n").append(INDENT_UNIT.repeat(level)).append("]");
     }
 
-    
     private static void writeString(StringBuilder sb, String s) {
         sb.append('"');
         for (int i = 0; i < s.length(); i++) {

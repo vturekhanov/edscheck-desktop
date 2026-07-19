@@ -4,13 +4,10 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
-import java.awt.Point;
-import java.awt.Rectangle;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.MouseAdapter;
@@ -18,8 +15,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -40,12 +35,6 @@ import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.UIManager;
-import javax.swing.plaf.basic.BasicHTML;
-import javax.swing.text.AttributeSet;
-import javax.swing.text.Position;
-import javax.swing.text.View;
-import javax.swing.text.html.HTML;
-import javax.swing.text.html.HTMLDocument;
 
 import com.formdev.flatlaf.util.SystemFileChooser;
 
@@ -66,24 +55,19 @@ import kz.edscheck.trace.Trace;
 import kz.edscheck.trust.KalkanJarException;
 import kz.edscheck.trust.LibraryJarException;
 
-
 public final class MainPanel extends JPanel {
-    
-    
+
     private static final Color COLOR_WARN = new Color(0xb2, 0x6a, 0x00);
     private static final Color COLOR_FAIL = new Color(0xc6, 0x28, 0x28);
 
-    
     private static final float VERDICT_FONT_SIZE_DELTA = 2f;
 
-    
     private static final String SPECIALIST_URL =
         "https://sigex.kz/blog/2021-01-25-digital-signatures-in-courts/#where-to-find-experts";
 
     private static final DateTimeFormatter DT_FMT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx", Locale.ROOT);
 
-    
     private static final String EMOJI_FONT_FAMILY = resolveEmojiFontFamily();
 
     private static String resolveEmojiFontFamily() {
@@ -97,7 +81,6 @@ public final class MainPanel extends JPanel {
         return null;
     }
 
-    
     private static final long DETECT_PEEK_MAX_BYTES = 500L * 1024 * 1024;
 
     private final CheckService checkService;
@@ -111,7 +94,7 @@ public final class MainPanel extends JPanel {
     private volatile boolean busy;
     private ResultViewModel currentModel;
     private boolean detailed;
-    
+
     private File pendingContainer;
     final JPanel documentRow;
 
@@ -133,15 +116,6 @@ public final class MainPanel extends JPanel {
         top.add(statusLabel);
         top.add(busyIndicator);
 
-        
-        
-        
-        
-        
-        
-        
-        
-        
         chooseDocumentButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_CHOOSE_DOCUMENT));
         chooseDocumentButton.addActionListener(e -> onChooseDocument());
         cancelDocumentButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_CANCEL_DOCUMENT));
@@ -170,32 +144,29 @@ public final class MainPanel extends JPanel {
         setTransferHandler(new FileDropHandler());
     }
 
-    
     private JLabel buildFooter() {
         JLabel label = new JLabel(footerText());
-        
-        
+
         label.setBorder(BorderFactory.createEmptyBorder(8, 4, 8, 4));
         label.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                String href = linkAt(label, e.getPoint());
+                String href = HtmlLinkSupport.linkAt(label, e.getPoint());
                 if (href != null) {
-                    openLink(href);
+                    HtmlLinkSupport.openLink(href);
                 }
             }
         });
         label.addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
-                boolean overLink = linkAt(label, e.getPoint()) != null;
+                boolean overLink = HtmlLinkSupport.linkAt(label, e.getPoint()) != null;
                 label.setCursor(Cursor.getPredefinedCursor(overLink ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
             }
         });
         return label;
     }
 
-    
     private static String footerText() {
         Color linkColor = UIManager.getColor("Label.foreground");
         String link = "<a href=\"" + SPECIALIST_URL + "\" style=\"color: rgb("
@@ -204,7 +175,6 @@ public final class MainPanel extends JPanel {
         return "<html>" + GuiMessages.get(GuiMsgKey.FOOTER_DISCLAIMER, link) + "</html>";
     }
 
-    
     @Override
     public void updateUI() {
         super.updateUI();
@@ -213,44 +183,8 @@ public final class MainPanel extends JPanel {
         }
     }
 
-    
-    private static String linkAt(JLabel label, Point point) {
-        if (!(label.getClientProperty(BasicHTML.propertyKey) instanceof View view)) {
-            return null;
-        }
-        Position.Bias[] bias = new Position.Bias[1];
-        int pos = view.viewToModel(point.x, point.y, new Rectangle(0, 0, label.getWidth(), label.getHeight()), bias);
-        if (pos < 0 || !(view.getDocument() instanceof HTMLDocument doc)) {
-            return null;
-        }
-        AttributeSet charAttrs = doc.getCharacterElement(pos).getAttributes();
-        if (charAttrs.getAttribute(HTML.Tag.A) instanceof AttributeSet anchorAttrs) {
-            return (String) anchorAttrs.getAttribute(HTML.Attribute.HREF);
-        }
-        return null;
-    }
-
-    private static void openLink(String href) {
-        if (!Desktop.isDesktopSupported()) {
-            return;
-        }
-        Desktop desktop = Desktop.getDesktop();
-        if (!desktop.isSupported(Desktop.Action.BROWSE)) {
-            return;
-        }
-        try {
-            desktop.browse(new URI(href));
-        } catch (IOException | URISyntaxException e) {
-            
-        }
-    }
-
     private void onChooseFile() {
-        
-        
-        
-        
-        
+
         SystemFileChooser chooser = new SystemFileChooser();
         chooser.setDialogTitle(GuiMessages.get(GuiMsgKey.FILE_CHOOSER_TITLE));
         if (chooser.showOpenDialog(this) == SystemFileChooser.APPROVE_OPTION) {
@@ -258,7 +192,6 @@ public final class MainPanel extends JPanel {
         }
     }
 
-    
     void handleSelectedContainer(File file) {
         if (isDetachedCades(peekBytes(file))) {
             pendingContainer = file;
@@ -282,7 +215,6 @@ public final class MainPanel extends JPanel {
         }
     }
 
-    
     void chooseDocument(File document) {
         if (pendingContainer == null) {
             return;
@@ -299,13 +231,11 @@ public final class MainPanel extends JPanel {
         statusLabel.setText(GuiMessages.get(GuiMsgKey.STATUS_IDLE));
     }
 
-    
     private static boolean isDetachedCades(byte[] bytes) {
         return bytes.length > 0 && bytes[0] == 0x30
             && CoSign.looksLikeCades(bytes) && !CoSign.isAttached(bytes);
     }
 
-    
     private static byte[] peekBytes(File file) {
         long size = file.length();
         if (size <= 0 || size > DETECT_PEEK_MAX_BYTES) {
@@ -318,12 +248,10 @@ public final class MainPanel extends JPanel {
         }
     }
 
-    
     void runCheck(File file) {
         runCheck(file, null);
     }
 
-    
     private void runCheck(File file, File document) {
         showBusy();
         DocumentSource documentSource = document != null ? DocumentSource.ofFile(document.toPath()) : null;
@@ -345,7 +273,6 @@ public final class MainPanel extends JPanel {
         }
     }
 
-    
     private static String errorMessage(Throwable cause) {
         String detail = cause.getMessage() != null ? cause.getMessage() : String.valueOf(cause);
         if (cause instanceof KalkanJarException || cause instanceof LibraryJarException) {
@@ -384,7 +311,6 @@ public final class MainPanel extends JPanel {
         resultsContainer.repaint();
     }
 
-    
     void showResult(ResultViewModel model) {
         showIdle();
         currentModel = model;
@@ -392,7 +318,6 @@ public final class MainPanel extends JPanel {
         renderResult();
     }
 
-    
     void toggleDetailed() {
         detailed = !detailed;
         renderResult();
@@ -421,13 +346,11 @@ public final class MainPanel extends JPanel {
         toggle.setAlignmentX(Component.LEFT_ALIGNMENT);
         toggle.addActionListener(e -> toggleDetailed());
         panel.add(toggle);
-        
-        
+
         panel.add(Box.createVerticalStrut(8));
         return panel;
     }
 
-    
     private JComponent summaryRow(ResultViewModel.SignatureView sig) {
         Font base = new JLabel().getFont();
         Font font = base.deriveFont(Font.BOLD, base.getSize2D() + VERDICT_FONT_SIZE_DELTA);
@@ -466,17 +389,11 @@ public final class MainPanel extends JPanel {
         panel.add(row(Messages.get(MsgKey.LABEL_REFERENCE_TIME),
             fmtDt(sig.referenceTime().value()) + " (" + sig.referenceTimeSourceLabel() + ")"));
 
-        
-        
-        
         JLabel checksLabel = new JLabel(Messages.get(MsgKey.LABEL_CHECKS) + ":");
         checksLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         checksLabel.setFont(checksLabel.getFont().deriveFont(Font.BOLD));
         panel.add(checksLabel);
-        
-        
-        
-        
+
         for (ResultViewModel.CheckView check : sig.checks()) {
             if (check.check().status() != CheckStatus.SKIP) {
                 panel.add(checkRow(check));
@@ -500,7 +417,6 @@ public final class MainPanel extends JPanel {
         return row;
     }
 
-    
     private static JComponent iconRow(String icon, String text, Color color, Font textFont) {
         JLabel iconLabel = new JLabel(icon);
         if (EMOJI_FONT_FAMILY != null) {
@@ -517,12 +433,7 @@ public final class MainPanel extends JPanel {
         box.add(iconLabel);
         box.add(Box.createHorizontalStrut(6));
         box.add(textLabel);
-        
-        
-        
-        
-        
-        
+
         box.setMaximumSize(new Dimension(Integer.MAX_VALUE, box.getPreferredSize().height));
         return box;
     }
@@ -545,7 +456,6 @@ public final class MainPanel extends JPanel {
         return value.atZone(ZoneId.systemDefault()).format(DT_FMT);
     }
 
-    
     private static String verdictIcon(ResultViewModel.SignatureView sig) {
         if (sig.verdict() != Verdict.GENUINE) {
             return GuiMessages.get(GuiMsgKey.GLYPH_INVALID);
@@ -571,7 +481,6 @@ public final class MainPanel extends JPanel {
         };
     }
 
-    
     private static String statusIcon(CheckStatus status) {
         return switch (status) {
             case PASS -> GuiMessages.get(GuiMsgKey.GLYPH_GENUINE);
@@ -581,7 +490,6 @@ public final class MainPanel extends JPanel {
         };
     }
 
-    
     private static final class VerticalPanel extends JPanel {
         VerticalPanel() {
             setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -589,7 +497,6 @@ public final class MainPanel extends JPanel {
         }
     }
 
-    
     private final class FileDropHandler extends TransferHandler {
         @Override
         public boolean canImport(TransferSupport support) {

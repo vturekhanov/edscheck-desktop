@@ -4,7 +4,6 @@ import java.security.cert.X509Certificate;
 import java.util.List;
 import kz.edscheck.domain.Encoding;
 
-
 public record ParsedContainer(
         Encoding encoding, String cadesLevel, List<ParsedSigner> signers,
         List<X509Certificate> containerCerts) {

@@ -21,15 +21,13 @@ import kz.gov.pki.kalkan.asn1.x509.X509CertificateStructure;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class CertificatesOps {
-    
+
     private static final String OID_ARCHIVE_TIMESTAMP_V3 = "0.4.0.1733.2.4";
 
     private CertificatesOps() {
     }
 
-    
     public static byte[] appendCertificates(byte[] cmsDer, List<X509Certificate> newCerts) {
         ContentInfo outer;
         SignedData signedData;

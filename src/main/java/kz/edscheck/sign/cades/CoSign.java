@@ -22,19 +22,13 @@ import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.online.Online;
 
-
 public final class CoSign {
-    
-    
-    
-    
-    
+
     private static final String OID_DATA = "1.2.840.113549.1.7.1";
 
     private CoSign() {
     }
 
-    
     public static boolean looksLikeCades(byte[] bytes) {
         try {
             ContentInfo outer = ContentInfo.getInstance(new ASN1InputStream(bytes).readObject());
@@ -48,7 +42,6 @@ public final class CoSign {
         }
     }
 
-    
     public static boolean isAttached(byte[] cmsDer) {
         ContentInfo outer = ContentInfo.getInstance(readAsn1(cmsDer));
         SignedData signedData = SignedData.getInstance(outer.getContent());
@@ -58,7 +51,6 @@ public final class CoSign {
     public record Result(byte[] bytes, int newIndex) {
     }
 
-    
     public static Result addSigner(byte[] existingCmsDer, byte[] document, String p12Path, char[] password,
                                     List<X509Certificate> chainCerts) throws Exception {
         ContentInfo outer = ContentInfo.getInstance(readAsn1(existingCmsDer));

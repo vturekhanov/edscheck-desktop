@@ -20,7 +20,6 @@ import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.output.NativeDates;
 
-
 public record ResultViewModel(
         String filePath,
         String caLabel,
@@ -31,7 +30,6 @@ public record ResultViewModel(
         boolean mixedAuthority,
         List<SignatureView> signatures) {
 
-    
     public record SignatureView(
             int index,
             int total,
@@ -47,7 +45,6 @@ public record ResultViewModel(
             List<CheckView> checks) {
     }
 
-    
     public record CheckView(
             Check check,
             String stageLabel,
@@ -84,7 +81,6 @@ public record ResultViewModel(
             signatures);
     }
 
-    
     private static boolean isMixedAuthority(SignedContainer container) {
         long distinct = container.signatures().stream()
             .map(Signature::authority)
@@ -141,11 +137,7 @@ public record ResultViewModel(
         String revokedReasonLabel = check.revokedReason() != null
             ? REVOCATION_REASON_LABEL.getOrDefault(check.revokedReason(), check.revokedReason())
             : null;
-        
-        
-        
-        
-        
+
         String localizedDetail = NativeDates.localize(check.detail());
         Check normalized = Objects.equals(localizedDetail, check.detail())
             ? check

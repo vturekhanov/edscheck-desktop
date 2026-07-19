@@ -56,7 +56,6 @@ import kz.edscheck.rules.KzEkuRoles;
 import kz.edscheck.trust.DigestAlgorithms;
 import kz.edscheck.trust.Digests;
 
-
 public final class Parsing {
     private static final String PROV = "KALKAN";
 
@@ -72,22 +71,13 @@ public final class Parsing {
         new DERObjectIdentifier("0.4.0.1733.2.4");
     private static final DERObjectIdentifier OID_DVCS_RECEIPT =
         new DERObjectIdentifier("1.2.398.6.20.1.1.1.1");
-    
-    
-    
+
     private static final DERObjectIdentifier OID_SIGNING_CERTIFICATE_V2 =
         new DERObjectIdentifier("1.2.840.113549.1.9.16.2.47");
 
     private record MandatoryBbAttr(DERObjectIdentifier oid, String name) {
     }
 
-    
-    
-    
-    
-    
-    
-    
     private static final List<MandatoryBbAttr> MANDATORY_BB_ATTRS = List.of(
         new MandatoryBbAttr(CMSAttributes.contentType, "content-type"),
         new MandatoryBbAttr(CMSAttributes.messageDigest, "message-digest"),
@@ -112,7 +102,6 @@ public final class Parsing {
     public record DecodedContainer(Encoding encoding, byte[] der) {
     }
 
-    
     public static DecodedContainer decodeContainer(byte[] raw) {
         int i = 0;
         while (i < raw.length && isAsciiWhitespace(raw[i])) {
@@ -132,19 +121,17 @@ public final class Parsing {
                 return new DecodedContainer(Encoding.BASE64, der);
             }
         } catch (IllegalArgumentException ignored) {
-            
+
         }
         return new DecodedContainer(Encoding.DER, raw);
     }
 
-    
     public static ParsedContainer parseContainer(byte[] raw, List<X509Certificate> extraCerts) {
         Decoded d = decodeForParsing(raw, extraCerts);
         return assembleParsedContainer(
             d.encoding(), d.der(), d.signerInfos(), d.certStore(), d.containerCerts(), d.bySubject());
     }
 
-    
     public static ParsedContainer parseContainer(
             byte[] raw, List<X509Certificate> extraCerts, DocumentSource document) {
         Decoded d = decodeForParsing(raw, extraCerts);
@@ -169,7 +156,6 @@ public final class Parsing {
             d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject());
     }
 
-    
     public static ParsedContainer parseContainer(
             byte[] raw, List<X509Certificate> extraCerts, Map<String, byte[]> precomputedDigests) {
         Decoded d = decodeForParsing(raw, extraCerts);
@@ -182,7 +168,6 @@ public final class Parsing {
             d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject());
     }
 
-    
     public static ParsedContainer parseAttached(DocumentSource container, List<X509Certificate> extraCerts) {
         AttachedSplitter.Split split;
         try {
@@ -201,7 +186,6 @@ public final class Parsing {
         }
     }
 
-    
     private record Decoded(
             Encoding encoding, byte[] der, CMSSignedData sd, CertStore certStore,
             List<X509Certificate> containerCerts, Map<X500Principal, X509Certificate> bySubject,
@@ -249,7 +233,6 @@ public final class Parsing {
         return new Decoded(decoded.encoding(), decoded.der(), sd, certStore, containerCerts, bySubject, signerInfos);
     }
 
-    
     private static ParsedContainer assembleParsedContainer(
             Encoding encoding, byte[] der, Collection<SignerInformation> signerInfos,
             CertStore certStore, List<X509Certificate> containerCerts,
@@ -287,10 +270,6 @@ public final class Parsing {
             index++;
         }
 
-        
-        
-        
-        
         signers = reorderToFileOrder(signers, bcOrderKeys, fileOrderSignatureKeys(der));
         List<ParsedSigner> reindexed = new ArrayList<>(signers.size());
         for (int i = 0; i < signers.size(); i++) {
@@ -303,7 +282,6 @@ public final class Parsing {
             reindexed, containerCerts);
     }
 
-    
     static Map<String, MessageDigest> neededDigestAlgorithms(Collection<SignerInformation> signerInfos) {
         Map<String, MessageDigest> mdByOid = new LinkedHashMap<>();
         for (SignerInformation si : signerInfos) {
@@ -318,13 +296,12 @@ public final class Parsing {
             try {
                 mdByOid.put(oid, MessageDigest.getInstance(jceName, PROV));
             } catch (Exception e) {
-                
+
             }
         }
         return mdByOid;
     }
 
-    
     private static Collection<SignerInformation> bindDigests(
             Collection<SignerInformation> signerInfos, byte[] der, Map<String, byte[]> digestsByOid) {
         Map<String, Map<String, SignerInformation>> boundByOid = new HashMap<>();
@@ -359,19 +336,11 @@ public final class Parsing {
         return bound;
     }
 
-    
-    
-    
-    
-    
-
-    
     private static String signerInfoSignatureKey(SignerInformation si) {
         byte[] sig = si.getSignature();
         return sig == null ? null : Base64.getEncoder().encodeToString(sig);
     }
 
-    
     private static List<String> fileOrderSignatureKeys(byte[] der) {
         try {
             var asn1 = new ASN1InputStream(der).readObject();
@@ -386,8 +355,7 @@ public final class Parsing {
                     byte[] sig = raw.getEncryptedDigest().getOctets();
                     key = Base64.getEncoder().encodeToString(sig);
                 } catch (Exception ignored) {
-                    
-                    
+
                 }
                 out.add(key);
             }
@@ -397,7 +365,6 @@ public final class Parsing {
         }
     }
 
-    
     private static List<ParsedSigner> reorderToFileOrder(
             List<ParsedSigner> signers, List<String> bcKeys, List<String> fileKeys) {
         if (fileKeys.size() != signers.size()) {
@@ -435,13 +402,12 @@ public final class Parsing {
             ps.missingBbAttrs());
     }
 
-    
     private static List<String> missingMandatoryBbAttrs(Collection<SignerInformation> signerInfos) {
         Set<String> missingAnywhere = new HashSet<>();
         for (SignerInformation si : signerInfos) {
             missingAnywhere.addAll(missingMandatoryBbAttrs(si.getSignedAttributes()));
         }
-        
+
         List<String> missing = new ArrayList<>();
         for (MandatoryBbAttr m : MANDATORY_BB_ATTRS) {
             if (missingAnywhere.contains(m.name())) {
@@ -451,7 +417,6 @@ public final class Parsing {
         return missing;
     }
 
-    
     private static List<String> missingMandatoryBbAttrs(AttributeTable at) {
         List<String> missing = new ArrayList<>();
         for (MandatoryBbAttr m : MANDATORY_BB_ATTRS) {
@@ -462,7 +427,6 @@ public final class Parsing {
         return missing;
     }
 
-    
     private static String cadesLevel(
             boolean hasTimestamp, boolean hasRevocation, boolean hasArchive, List<String> missingBb) {
         if (!missingBb.isEmpty()) {
@@ -479,10 +443,6 @@ public final class Parsing {
         }
         return Messages.get(MsgKey.PARSING_CADES_LEVEL_BB);
     }
-
-    
-    
-    
 
     private static X509Certificate resolveSignerCert(CertStore certStore, SignerInformation si) {
         try {
@@ -514,10 +474,6 @@ public final class Parsing {
         }
         return chain;
     }
-
-    
-    
-    
 
     private static Certificate certificateFields(X509Certificate cert) {
         X509Name subject = x509Name(cert.getSubjectX500Principal());
@@ -571,7 +527,6 @@ public final class Parsing {
         return value;
     }
 
-    
     @SuppressWarnings("unchecked")
     private static String extractBin(X509Name name) {
         if (name == null) {
@@ -595,7 +550,6 @@ public final class Parsing {
         return null;
     }
 
-    
     @SuppressWarnings("unchecked")
     private static String issuerHumanFriendly(X509Certificate cert) {
         return humanFriendlyName(cert.getIssuerX500Principal());
@@ -734,14 +688,10 @@ public final class Parsing {
                 extUsages.addAll(eku);
             }
         } catch (CertificateParsingException ignored) {
-            
+
         }
         return new KeyUsageInfo(usages, extUsages);
     }
-
-    
-    
-    
 
     private static Instant signedAttrTime(SignerInformation si) {
         AttributeTable at = si.getSignedAttributes();
@@ -768,7 +718,7 @@ public final class Parsing {
                 return t.getDate().toInstant();
             }
         } catch (Exception ignored) {
-            
+
         }
         return null;
     }
@@ -851,7 +801,6 @@ public final class Parsing {
         return out;
     }
 
-    
     private record EssBinding(String alg, byte[] hash) {
         static final EssBinding NONE = new EssBinding(null, null);
     }
@@ -879,7 +828,6 @@ public final class Parsing {
         }
     }
 
-    
     private record SignedDataContext(byte[] eContentTypeDer, List<byte[]> crlBlobs) {
     }
 
@@ -902,7 +850,6 @@ public final class Parsing {
         }
     }
 
-    
     private record ArchiveData(ArchiveTimestampInfo info, List<ArchiveTs.ParsedArchiveTimestamp> marks) {
     }
 
@@ -948,10 +895,6 @@ public final class Parsing {
             return null;
         }
     }
-
-    
-    
-    
 
     private static boolean isAsciiWhitespace(byte b) {
         return b == ' ' || b == '\t' || b == '\r' || b == '\n';

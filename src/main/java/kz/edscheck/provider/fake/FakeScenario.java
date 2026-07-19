@@ -4,10 +4,8 @@ import java.time.Instant;
 import kz.edscheck.domain.CheckStatus;
 import kz.edscheck.domain.RevocationSource;
 
-
 public final class FakeScenario {
-    
-    
+
     private static final Instant FAKE_REVOCATION_VALID_FROM = Instant.parse("2000-01-01T00:00:00Z");
     private static final Instant FAKE_REVOCATION_VALID_UNTIL = Instant.parse("2100-01-01T00:00:00Z");
 
@@ -23,9 +21,7 @@ public final class FakeScenario {
     public final Boolean timestampValid;
     public final String timestampDetail;
     public final Boolean tsaKeyUsageOk;
-    
-    
-    
+
     public final CheckStatus archiveStatus;
     public final String archiveDetail;
 
@@ -50,7 +46,6 @@ public final class FakeScenario {
         return new Builder();
     }
 
-    
     public static FakeScenario defaults() {
         return new Builder().build();
     }

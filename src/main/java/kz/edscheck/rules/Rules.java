@@ -22,16 +22,13 @@ import kz.edscheck.provider.KeyUsageInfo;
 import kz.edscheck.provider.StageOutcome;
 import kz.edscheck.provider.TimestampInfo;
 
-
 public final class Rules {
     private Rules() {
     }
 
-    
     public record CheckAndWarnings(Check check, List<String> warnings) {
     }
 
-    
     public static kz.edscheck.domain.ReferenceTime computeReferenceTime(
             TimestampInfo timestamp, PolicyProfile policy) {
         if (timestamp.present()
@@ -44,7 +41,6 @@ public final class Rules {
         return new kz.edscheck.domain.ReferenceTime(Instant.now(), TimeSource.CURRENT);
     }
 
-    
     private static boolean tsaOcspWindowViolated(TimestampInfo timestamp, PolicyProfile policy) {
         StageOutcome tsaOcsp = timestamp.tsaOcsp();
         if (tsaOcsp == null || timestamp.genTime() == null) {
@@ -54,7 +50,6 @@ public final class Rules {
             tsaOcsp.validFrom(), tsaOcsp.validUntil(), timestamp.genTime(), policy.ocspMaxAge());
     }
 
-    
     private static boolean ocspWindowViolated(
             Instant thisUpdate, Instant validUntil, Instant referenceTime, Duration ocspMaxAge) {
         if (thisUpdate == null || ocspMaxAge == null) {
@@ -65,7 +60,6 @@ public final class Rules {
         return referenceTime.isBefore(lower) || referenceTime.isAfter(upper);
     }
 
-    
     public static CheckAndWarnings timestampCheck(TimestampInfo timestamp, PolicyProfile policy) {
         List<String> warnings = new ArrayList<>();
         if (!timestamp.present()) {
@@ -82,8 +76,7 @@ public final class Rules {
                 warnings);
         }
         if (Boolean.TRUE.equals(timestamp.valid())) {
-            
-            
+
             if (Boolean.FALSE.equals(timestamp.tsaKeyUsageOk())) {
                 return new CheckAndWarnings(
                     new Check(Stage.TIMESTAMP, CheckStatus.FAIL,
@@ -91,10 +84,7 @@ public final class Rules {
                         timestamp.genTime(), null, null, null, null, null),
                     warnings);
             }
-            
-            
-            
-            
+
             if (tsaOcspWindowViolated(timestamp, policy)) {
                 return new CheckAndWarnings(
                     new Check(Stage.TIMESTAMP, CheckStatus.FAIL,
@@ -116,17 +106,12 @@ public final class Rules {
             warnings);
     }
 
-    
-    
-    
-    
     private static final Map<String, String> BB_ATTR_WARNING = Map.of(
         "content-type", Warnings.CONTENT_TYPE_ABSENT,
         "message-digest", Warnings.MESSAGE_DIGEST_ABSENT,
         "signing-time", Warnings.SIGNING_TIME_ABSENT,
         "signing-certificate-v2", Warnings.SIGNING_CERTIFICATE_V2_ABSENT);
 
-    
     public static CheckAndWarnings signedAttrsCheck(List<String> missingBbAttrs, PolicyProfile policy) {
         List<String> warnings = new ArrayList<>();
         if (missingBbAttrs.isEmpty()) {
@@ -151,7 +136,6 @@ public final class Rules {
             warnings);
     }
 
-    
     public static CheckAndWarnings archiveTimestampCheck(
             ArchiveTimestampInfo info, StageOutcome outcome) {
         List<String> warnings = new ArrayList<>();
@@ -183,7 +167,6 @@ public final class Rules {
             warnings);
     }
 
-    
     public static Check decideValidity(Instant referenceTime, Certificate cert, PolicyProfile policy) {
         return decideValidity(referenceTime, cert, policy, null);
     }
@@ -222,7 +205,6 @@ public final class Rules {
         return Messages.get(MsgKey.LABEL_CERTIFICATE);
     }
 
-    
     public static Check applyRevocationPeriod(
             Check check, StageOutcome outcome, Instant referenceTime, Instant checkTime,
             PolicyProfile policy) {
@@ -256,19 +238,7 @@ public final class Rules {
         }
         if (compareTime.isAfter(validUntil)) {
             if (!isCrl) {
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
-                
+
                 return ocspWindowFailCheck(check, validFrom);
             }
             return new Check(Stage.REVOCATION, CheckStatus.FAIL,
@@ -278,7 +248,6 @@ public final class Rules {
         return check.withValidFrom(validFrom);
     }
 
-    
     private static Check ocspWindowFailCheck(Check check, Instant thisUpdate) {
         return new Check(
             check.stage(), CheckStatus.FAIL,
@@ -287,7 +256,6 @@ public final class Rules {
             thisUpdate);
     }
 
-    
     public static CheckAndWarnings applyRevocationDate(Check check, StageOutcome outcome) {
         if (check.status() != CheckStatus.FAIL || outcome == null) {
             return new CheckAndWarnings(check, List.of());
@@ -299,7 +267,6 @@ public final class Rules {
         return new CheckAndWarnings(check.withRevokedAt(revokedAt, outcome.revokedReason()), List.of());
     }
 
-    
     public static Check applyOcspSigningWindow(
             Check check, StageOutcome outcome, Instant referenceTime, PolicyProfile policy) {
         if (outcome == null || check.source() != RevocationSource.OCSP) {
@@ -315,7 +282,6 @@ public final class Rules {
         return ocspWindowFailCheck(check, thisUpdate);
     }
 
-    
     public static Check decideKeyUsage(KeyUsageInfo keyUsage, PolicyProfile policy) {
         var usages = keyUsage.usages();
         if (usages.isEmpty()) {
@@ -340,7 +306,6 @@ public final class Rules {
             Messages.get(MsgKey.RULES_KEY_USAGE_NOT_FOR_SIGNING));
     }
 
-    
     public static Verdict computeVerdict(List<Check> checks) {
         Map<Stage, CheckStatus> statusByStage = new EnumMap<>(Stage.class);
         for (Check c : checks) {
@@ -357,15 +322,13 @@ public final class Rules {
         if (statusByStage.get(Stage.ARCHIVE_TIMESTAMP) == CheckStatus.FAIL) {
             return Verdict.INVALID;
         }
-        
-        
+
         if (statusByStage.get(Stage.SIGNED_ATTRIBUTES) == CheckStatus.FAIL) {
             return Verdict.INVALID;
         }
         return Verdict.GENUINE;
     }
 
-    
     public static Check outcomeToCheck(Stage stage, StageOutcome outcome) {
         return new Check(stage, outcome.status(), outcome.detail(), null,
             outcome.source(), outcome.crlUrl(), null, null, null);

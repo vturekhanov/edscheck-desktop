@@ -21,10 +21,9 @@ import kz.edscheck.errors.OperationalException;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class ManifestTrust {
     private static final Logger LOG = Logger.getLogger(ManifestTrust.class.getName());
-    private static final Path MANIFEST_PATH = Paths.get("certs", "MANIFEST.json");
+    private static final Path MANIFEST_CERTS_PREFIX = Paths.get("certs");
     private static final String PROV = "KALKAN";
 
     static {
@@ -36,14 +35,13 @@ public final class ManifestTrust {
     private ManifestTrust() {
     }
 
-    
     public static List<String> trustedCerts(String ca, String env) {
         if ("fake".equals(ca)) {
             return List.of();
         }
         List<String> resolved = new ArrayList<>();
         for (String rel : manifestTrustedCertFiles(env)) {
-            Path path = Paths.get(rel);
+            Path path = resolveCertPath(rel);
             if (Files.exists(path)) {
                 resolved.add(path.toString());
             } else {
@@ -53,21 +51,30 @@ public final class ManifestTrust {
         return resolved;
     }
 
+    private static Path resolveCertPath(String rel) {
+        Path relPath = Paths.get(rel);
+        Path tail = relPath.startsWith(MANIFEST_CERTS_PREFIX)
+            ? MANIFEST_CERTS_PREFIX.relativize(relPath)
+            : relPath;
+        return CertsDir.resolve().resolve(tail);
+    }
+
     @SuppressWarnings("unchecked")
     private static List<String> manifestTrustedCertFiles(String env) {
+        Path manifestPath = CertsDir.resolve().resolve("MANIFEST.json");
         String json;
         try {
-            json = Files.readString(MANIFEST_PATH, StandardCharsets.UTF_8);
+            json = Files.readString(manifestPath, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new OperationalException(
-                Messages.get(MsgKey.MANIFEST_TRUST_READ_FAILED, MANIFEST_PATH, e.getMessage()), e);
+                Messages.get(MsgKey.MANIFEST_TRUST_READ_FAILED, manifestPath, e.getMessage()), e);
         }
         Map<String, Object> data;
         try {
             data = (Map<String, Object>) Json.parse(json);
         } catch (RuntimeException e) {
             throw new OperationalException(
-                Messages.get(MsgKey.MANIFEST_TRUST_PARSE_FAILED, MANIFEST_PATH, e.getMessage()), e);
+                Messages.get(MsgKey.MANIFEST_TRUST_PARSE_FAILED, manifestPath, e.getMessage()), e);
         }
         List<Object> certs = (List<Object>) data.getOrDefault("certs", List.of());
         List<String> out = new ArrayList<>();
@@ -82,7 +89,6 @@ public final class ManifestTrust {
         return out;
     }
 
-    
     public static List<X509Certificate> loadCertificates(List<String> paths) {
         List<X509Certificate> certs = new ArrayList<>();
         CertificateFactory cf;

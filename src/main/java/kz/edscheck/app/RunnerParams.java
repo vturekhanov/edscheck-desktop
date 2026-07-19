@@ -6,7 +6,6 @@ import kz.edscheck.domain.DocumentSource;
 import kz.edscheck.domain.Environment;
 import kz.edscheck.trace.Trace;
 
-
 public record RunnerParams(
         DocumentSource containerSource,
         DocumentSource documentSource,

@@ -24,13 +24,10 @@ import kz.edscheck.domain.VerificationRequest;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class TextRenderer {
     private static final Map<CheckStatus, String> GLYPH = new HashMap<>();
     static {
-        
-        
-        
+
         Map<CheckStatus, String> words = new LinkedHashMap<>();
         words.put(CheckStatus.PASS, Messages.get(MsgKey.GLYPH_PASS));
         words.put(CheckStatus.WARN, Messages.get(MsgKey.GLYPH_WARN));
@@ -68,7 +65,6 @@ public final class TextRenderer {
         ALG_LABEL.put(KeyAlgorithm.GOST, Messages.get(MsgKey.KEY_ALG_GOST));
     }
 
-    
     private static final Map<String, String> CA_LABEL = new HashMap<>();
     static {
         CA_LABEL.put("nca", Messages.get(MsgKey.CA_NCA));
@@ -86,8 +82,6 @@ public final class TextRenderer {
             Messages.get(MsgKey.REV_SOURCE_CRL_REFERENCE));
     }
 
-    
-    
     private static final Map<String, String> REVOCATION_REASON_LABEL = new HashMap<>();
     static {
         REVOCATION_REASON_LABEL.put("unspecified",
@@ -112,10 +106,6 @@ public final class TextRenderer {
             Messages.get(MsgKey.REVOCATION_REASON_AA_COMPROMISE));
     }
 
-    
-    
-    
-    
     private static final MsgKey[] FIELD_LABELS = {
         MsgKey.LABEL_SIGNER, MsgKey.LABEL_IIN, MsgKey.LABEL_BIN, MsgKey.LABEL_ROLE,
         MsgKey.LABEL_ORGANIZATION, MsgKey.LABEL_CERTIFICATE, MsgKey.LABEL_REFERENCE_TIME,
@@ -166,7 +156,6 @@ public final class TextRenderer {
         return String.join("\n", lines);
     }
 
-    
     private static boolean isMixedAuthority(SignedContainer container) {
         long distinct = container.signatures().stream()
             .map(Signature::authority)
@@ -196,9 +185,6 @@ public final class TextRenderer {
         String header = Messages.get(MsgKey.TEXT_SIGNATURE_HEADER, sig.index() + 1, total);
         lines.add(pad(header, VALUE_COL) + verdictLabel(sig));
 
-        
-        
-        
         if (mixed) {
             lines.add(field(MsgKey.LABEL_CA,
                 sig.authority() != null
@@ -240,7 +226,6 @@ public final class TextRenderer {
         return Messages.get(MsgKey.VERDICT_INVALID);
     }
 
-    
     private static List<String> certLines(Signature sig) {
         Certificate c = sig.signer();
         List<String> rows = new ArrayList<>();
@@ -355,15 +340,10 @@ public final class TextRenderer {
             text = String.join(": ", parts);
         }
 
-        
-        
-        
         if (check.validFrom() != null) {
             text += " (thisUpdate " + fmtDt(check.validFrom()) + ")";
         }
 
-        
-        
         if (check.revokedAt() != null) {
             String paren = fmtDt(check.revokedAt());
             if (check.revokedReason() != null) {
@@ -388,7 +368,6 @@ public final class TextRenderer {
     private static final DateTimeFormatter DT_FMT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx", Locale.ROOT);
 
-    
     private static String fmtDt(Instant value) {
         return value.atZone(ZoneId.systemDefault()).format(DT_FMT);
     }

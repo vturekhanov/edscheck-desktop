@@ -6,7 +6,6 @@ import javax.swing.WindowConstants;
 import kz.edscheck.gui.msg.GuiMessages;
 import kz.edscheck.gui.msg.GuiMsgKey;
 
-
 public final class MainWindow extends JFrame {
     public MainWindow() {
         super(GuiMessages.get(GuiMsgKey.WINDOW_TITLE));

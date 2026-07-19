@@ -2,7 +2,6 @@ package kz.edscheck.domain;
 
 import java.util.List;
 
-
 public record Signature(
         int index,
         Verdict verdict,
@@ -17,7 +16,6 @@ public record Signature(
         warnings = warnings == null ? List.of() : List.copyOf(warnings);
     }
 
-    
     public Signature(
             int index, Verdict verdict, Certificate signer, ReferenceTime referenceTime,
             List<Check> checks, List<String> warnings) {

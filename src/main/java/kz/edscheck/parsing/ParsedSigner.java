@@ -8,7 +8,6 @@ import kz.edscheck.provider.ArchiveTimestampInfo;
 import kz.edscheck.provider.KeyUsageInfo;
 import kz.gov.pki.kalkan.jce.provider.cms.SignerInformation;
 
-
 public record ParsedSigner(
         int index,
         Certificate certificate,

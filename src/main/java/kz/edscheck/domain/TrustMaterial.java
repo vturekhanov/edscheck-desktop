@@ -2,7 +2,6 @@ package kz.edscheck.domain;
 
 import java.util.List;
 
-
 public record TrustMaterial(List<String> roots, List<String> crls) {
 
     public TrustMaterial {

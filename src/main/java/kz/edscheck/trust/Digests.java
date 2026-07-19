@@ -5,14 +5,12 @@ import java.io.InputStream;
 import java.security.MessageDigest;
 import java.util.Collection;
 
-
 public final class Digests {
     private static final int BUFFER_SIZE = 1 << 16;
 
     private Digests() {
     }
 
-    
     public static long updateAll(InputStream in, Collection<MessageDigest> digests) throws IOException {
         byte[] buf = new byte[BUFFER_SIZE];
         long total = 0;
@@ -26,7 +24,6 @@ public final class Digests {
         return total;
     }
 
-    
     public static long update(InputStream in, MessageDigest digest) throws IOException {
         return updateAll(in, java.util.List.of(digest));
     }

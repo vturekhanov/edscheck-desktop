@@ -29,17 +29,14 @@ import kz.edscheck.errors.ContainerException;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class Ddcard {
     private static final byte[] PDF_MAGIC = "%PDF-".getBytes(StandardCharsets.US_ASCII);
 
-    
     private static final Pattern NUM_SUFFIX = Pattern.compile("^(.*?)(\\d+)$");
 
     private Ddcard() {
     }
 
-    
     public static String detectInputFormat(byte[] raw) {
         if (raw.length >= PDF_MAGIC.length) {
             boolean match = true;
@@ -56,7 +53,6 @@ public final class Ddcard {
         return "cms";
     }
 
-    
     public static boolean looksLikeDdcard(DocumentSource source) throws IOException {
         byte[] prefix = new byte[PDF_MAGIC.length];
         try (InputStream in = source.open()) {
@@ -65,7 +61,6 @@ public final class Ddcard {
         }
     }
 
-    
     public static DdcardContent parseDdcard(byte[] raw) {
         if (!"ddcard".equals(detectInputFormat(raw))) {
             throw new ContainerException(Messages.get(MsgKey.DDCARD_NOT_PDF));
@@ -102,7 +97,6 @@ public final class Ddcard {
             documentSourceForKey(raw, documentKey), documentName, signatures, signatureNames);
     }
 
-    
     public static byte[] reconstructAttached(byte[] cmsBytes, byte[] document) {
         try {
             Object asn1 = new ASN1InputStream(cmsBytes).readObject();
@@ -125,15 +119,9 @@ public final class Ddcard {
         }
     }
 
-    
-    
-    
-
-    
     private record Entry(String key, String displayName, PDComplexFileSpecification spec) {
     }
 
-    
     private static List<Entry> embeddedFilesInOrder(PDDocument doc) throws Exception {
         PDDocumentCatalog catalog = doc.getDocumentCatalog();
         PDDocumentNameDictionary names = catalog.getNames();
@@ -149,7 +137,6 @@ public final class Ddcard {
         return normalizeOrder(collected);
     }
 
-    
     private static void walkNameTree(
             PDNameTreeNode<PDComplexFileSpecification> node, List<Entry> out) throws Exception {
         var names = node.getNames();
@@ -168,7 +155,6 @@ public final class Ddcard {
         }
     }
 
-    
     private static DocumentSource documentSourceForKey(byte[] raw, String key) {
         return () -> {
             PDDocument doc = Loader.loadPDF(raw);
@@ -205,7 +191,6 @@ public final class Ddcard {
         };
     }
 
-    
     private static PDComplexFileSpecification findByKey(PDDocument doc, String key) throws Exception {
         PDDocumentCatalog catalog = doc.getDocumentCatalog();
         PDDocumentNameDictionary names = catalog.getNames();
@@ -240,7 +225,6 @@ public final class Ddcard {
         return null;
     }
 
-    
     private static byte[] embeddedBytes(PDComplexFileSpecification spec) throws Exception {
         PDEmbeddedFile ef = spec.getEmbeddedFile();
         if (ef == null) {
@@ -252,7 +236,6 @@ public final class Ddcard {
         return ef.toByteArray();
     }
 
-    
     private static String displayName(PDComplexFileSpecification spec, String fallback) {
         String name = spec.getFileUnicode();
         if (name == null) {
@@ -261,7 +244,6 @@ public final class Ddcard {
         return name != null ? name : fallback;
     }
 
-    
     private static List<Entry> normalizeOrder(List<Entry> entries) {
         if (entries.size() < 2) {
             return entries;

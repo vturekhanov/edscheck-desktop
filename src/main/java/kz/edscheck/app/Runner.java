@@ -24,17 +24,12 @@ import kz.edscheck.trust.LibraryJarException;
 import kz.edscheck.trust.LibraryJars;
 import kz.edscheck.trust.ManifestTrust;
 
-
 public final class Runner {
     private Runner() {
     }
 
     public static RunResult run(RunnerParams params) throws KalkanJarException, LibraryJarException {
-        
-        
-        
-        
-        
+
         if (params.documentSource() == null && looksLikeDdcard(params.containerSource())) {
             LibraryJars.verifyRuntime(LibraryJars.resolveDirFromSystemProperty());
         }
@@ -52,8 +47,7 @@ public final class Runner {
 
         SignedContainer result;
         if (params.documentSource() != null) {
-            
-            
+
             byte[] signatureBytes = readAllBytes(params.containerSource());
             result = engine.verifyDetached(
                 request, params.documentSource(), List.of(signatureBytes), params.documentName());
@@ -82,15 +76,14 @@ public final class Runner {
     private static VerificationProvider buildProvider(String ca, String engine, Trace trace)
             throws KalkanJarException {
         if ("fake".equals(ca)) {
-            
+
             return new FakeProvider();
         }
         if (ca.equals("nca") || ca.equals("btsd") || ca.equals("ucgo") || ca.equals("auto")) {
             if ("kalkan-c".equals(engine)) {
                 throw new OperationalException(Messages.get(MsgKey.RUNNER_KALKAN_C_UNAVAILABLE));
             }
-            
-            
+
             KalkanJar.resolveAndVerify();
             return new KalkanProvider(trace);
         }

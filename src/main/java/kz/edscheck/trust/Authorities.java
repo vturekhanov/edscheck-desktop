@@ -10,7 +10,6 @@ import kz.gov.pki.kalkan.asn1.ASN1InputStream;
 import kz.gov.pki.kalkan.asn1.ASN1Sequence;
 import kz.gov.pki.kalkan.asn1.x509.X509Name;
 
-
 public final class Authorities {
     private static final Map<String, String> DISPLAY = Map.of(
         "nca", Messages.get(MsgKey.CA_NCA),
@@ -45,7 +44,6 @@ public final class Authorities {
         return attr(name, X509Name.CN).contains("Удостоверяющий центр Государственных органов");
     }
 
-    
     public static String detectPrincipal(X500Principal name) {
         if (name == null) {
             return null;
@@ -62,7 +60,6 @@ public final class Authorities {
         return null;
     }
 
-    
     public static String detect(X509Certificate anchorCert) {
         if (anchorCert == null) {
             return null;
@@ -70,7 +67,6 @@ public final class Authorities {
         return detectPrincipal(anchorCert.getSubjectX500Principal());
     }
 
-    
     public static String display(String code) {
         if (code == null) {
             return Messages.get(MsgKey.CA_UNKNOWN);

@@ -1,6 +1,5 @@
 package kz.edscheck.domain;
 
-
 public enum RevocationSource {
     OCSP,
     CRL_EMBEDDED,

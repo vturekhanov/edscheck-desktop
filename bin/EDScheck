@@ -18,6 +18,7 @@ CORE_JAR="$REPO_ROOT/dist/eds-check.jar"
 GUI_JAR="$REPO_ROOT/dist/eds-check-gui.jar"
 KALKAN_JAR="$REPO_ROOT/lib/kalkancrypt-0.7.6-certified.jar"
 LIB_DIR="$REPO_ROOT/lib"
+CERTS_DIR="$REPO_ROOT/certs"
 
 resolve_jdk_bin() {
     if [ -x "$REPO_ROOT/.jdk/bin/java" ]; then
@@ -61,4 +62,5 @@ fi
 cd "$REPO_ROOT"
 
 exec "$JDK_JAVA" -cp "$CP" -Dkz.edscheck.kalkanJar="$KALKAN_JAR" -Dkz.edscheck.libDir="$LIB_DIR" \
+    -Dkz.edscheck.certsDir="$CERTS_DIR" -Dflatlaf.nativeLibraryPath="$LIB_DIR" \
     kz.edscheck.gui.GuiMain

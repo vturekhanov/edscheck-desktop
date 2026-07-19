@@ -5,7 +5,6 @@ import java.nio.file.Path;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class VerifyLibraryJarsMain {
     private VerifyLibraryJarsMain() {
     }

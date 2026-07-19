@@ -28,7 +28,6 @@ import kz.gov.pki.kalkan.tsp.TimeStampToken;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class ArchiveTs {
     public static final String OID_ARCHIVE_TIMESTAMP_V3 = "0.4.0.1733.2.4"; 
     public static final String OID_ATS_HASH_INDEX_V3 = "0.4.0.19122.1.5";   
@@ -44,7 +43,6 @@ public final class ArchiveTs {
     private ArchiveTs() {
     }
 
-    
     public static final class ParsedArchiveTimestamp {
         public final int position;
         public byte[] tstDer;
@@ -69,7 +67,6 @@ public final class ArchiveTs {
         }
     }
 
-    
     public static List<ParsedArchiveTimestamp> parseArchiveTimestamps(
             SignerInformation si, List<X509Certificate> containerCerts,
             List<byte[]> crlBlobs, byte[] eContentTypeDer) {
@@ -84,8 +81,7 @@ public final class ArchiveTs {
             try {
                 certBlobs.add(c.getEncoded());
             } catch (Exception ignored) {
-                
-                
+
             }
         }
         List<byte[]> nonV3Blobs = nonV3AttrBlobs(ut);
@@ -190,11 +186,6 @@ public final class ArchiveTs {
         return mark;
     }
 
-    
-    
-    
-
-    
     public static String evaluateHashes(
             ParsedArchiveTimestamp mark, List<byte[]> computedCertHashes,
             List<byte[]> computedCrlHashes, List<byte[]> computedAttrHashes,
@@ -241,7 +232,6 @@ public final class ArchiveTs {
         return out;
     }
 
-    
     public static String markFailure(
             ParsedArchiveTimestamp mark, Boolean tsaSigOk, Boolean tsaLinksOk,
             Boolean tsaAnchored, Boolean tsaValidityOk, String hashFailure) {
@@ -263,7 +253,6 @@ public final class ArchiveTs {
         return hashFailure;
     }
 
-    
     public static Boolean markTsaCertInValidity(ParsedArchiveTimestamp mark) {
         if (mark.tsaCert == null || mark.genTime == null) {
             return null;
@@ -273,14 +262,12 @@ public final class ArchiveTs {
         return !mark.genTime.isBefore(notBefore) && !mark.genTime.isAfter(notAfter);
     }
 
-    
     public record Failure(int position, String reason) {
     }
 
     public record Combined(boolean ok, String detail) {
     }
 
-    
     public static Combined combineResults(int total, List<Failure> failures) {
         if (!failures.isEmpty()) {
             Failure first = failures.get(0);
@@ -292,10 +279,6 @@ public final class ArchiveTs {
         }
         return new Combined(true, null);
     }
-
-    
-    
-    
 
     private static List<Object> archiveTsValues(AttributeTable ut) {
         List<Object> out = new ArrayList<>();
@@ -313,7 +296,6 @@ public final class ArchiveTs {
         return out;
     }
 
-    
     private static List<byte[]> nonV3AttrBlobs(AttributeTable ut) {
         List<byte[]> out = new ArrayList<>();
         if (ut == null) {
@@ -334,7 +316,6 @@ public final class ArchiveTs {
         return out;
     }
 
-    
     private static byte[] imprintPrefix(SignerInformation si, byte[] eContentTypeDer) {
         AttributeTable at = si.getSignedAttributes();
         if (at == null) {
@@ -361,7 +342,6 @@ public final class ArchiveTs {
         }
     }
 
-    
     private static byte[] signedAttrsRawBytes(AttributeTable signedAttrs) {
         byte[] setEncoded = new DERSet(signedAttrs.toASN1EncodableVector()).getDEREncoded();
         byte[] out = setEncoded.clone();

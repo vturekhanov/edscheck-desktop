@@ -3,15 +3,14 @@ package kz.edscheck.rules;
 import java.time.Duration;
 import java.util.Set;
 
-
 public final class PolicyProfile {
     private final boolean requireTimestamp;
     private final Set<String> allowedKeyAlgorithms;
     private final boolean enforcePolicyOids;
     private final boolean requireNonRepudiation;
-    
+
     private final Duration ocspMaxAge;
-    
+
     private final boolean requireBbAttrs;
 
     public PolicyProfile() {
@@ -30,7 +29,6 @@ public final class PolicyProfile {
         this.requireBbAttrs = requireBbAttrs;
     }
 
-    
     public static PolicyProfile withOcspMaxAge(Duration ocspMaxAge) {
         return new PolicyProfile(false, Set.of(), false, true, ocspMaxAge, false);
     }
@@ -39,12 +37,10 @@ public final class PolicyProfile {
         return new PolicyProfile(requireTimestamp, Set.of(), false, true, Duration.ofMinutes(5), false);
     }
 
-    
     public static PolicyProfile withRequireBbAttrs(boolean requireBbAttrs) {
         return new PolicyProfile(false, Set.of(), false, true, Duration.ofMinutes(5), requireBbAttrs);
     }
 
-    
     public static PolicyProfile ncaPolicy() {
         return new PolicyProfile();
     }

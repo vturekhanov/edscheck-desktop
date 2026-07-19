@@ -1,6 +1,5 @@
 package kz.edscheck.trace;
 
-
 public interface Trace {
     Trace NONE = message -> { };
 

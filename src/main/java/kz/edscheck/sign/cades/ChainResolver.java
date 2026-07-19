@@ -9,7 +9,6 @@ import java.util.Set;
 
 import kz.edscheck.online.Online;
 
-
 public final class ChainResolver {
     private ChainResolver() {
     }

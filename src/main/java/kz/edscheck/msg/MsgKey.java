@@ -1,8 +1,7 @@
 package kz.edscheck.msg;
 
-
 public enum MsgKey {
-    
+
     TEXT_HEADER("text.header", 0),
     TEXT_FILE_LINE("text.file_line", 3),
     TEXT_FORMAT_DDCARD("text.format_ddcard", 0),
@@ -12,12 +11,10 @@ public enum MsgKey {
     TEXT_SIGNATURES_TOTAL("text.signatures_total", 1),
     TEXT_SIGNATURE_HEADER("text.signature_header", 2),
 
-    
     VERDICT_GENUINE("verdict.genuine", 0),
     VERDICT_GENUINE_WARNINGS("verdict.genuine_warnings", 0),
     VERDICT_INVALID("verdict.invalid", 0),
 
-    
     LABEL_SIGNER("label.signer", 0),
     LABEL_IIN("label.iin", 0),
     LABEL_BIN("label.bin", 0),
@@ -28,26 +25,21 @@ public enum MsgKey {
     LABEL_CHECKS("label.checks", 0),
     LABEL_CA("label.ca", 0),
 
-    
     CERT_SERIAL("cert.serial", 1),
     CERT_ISSUER("cert.issuer", 1),
     CERT_VALIDITY_FROM_TO("cert.validity_from_to", 2),
     CERT_VALIDITY_TO("cert.validity_to", 1),
     CERT_VALIDITY_FROM("cert.validity_from", 1),
 
-    
-    
     GLYPH_PASS("glyph.pass", 0),
     GLYPH_WARN("glyph.warn", 0),
     GLYPH_FAIL("glyph.fail", 0),
     GLYPH_SKIP("glyph.skip", 0),
-    
+
     CHECK_ONLINE_MARK("check.online_mark", 0),
-    
-    
+
     TEXT_NO_VALUE("text.no_value", 0),
 
-    
     CHECK_CRL_HINT("check.crl_hint", 1),
     CHECK_TIMESTAMP_VALID("check.timestamp_valid", 0),
     CHECK_ARCHIVE_TIMESTAMP_VALID("check.archive_timestamp_valid", 0),
@@ -59,11 +51,9 @@ public enum MsgKey {
     CHECK_REVOCATION_REVOKED_AFTER_REF("check.revocation_revoked_after_ref", 0),
     CHECK_REVOCATION_NOT_VERIFIED("check.revocation_not_verified", 0),
 
-    
     TIME_SOURCE_TIMESTAMP("time_source.timestamp", 0),
     TIME_SOURCE_CURRENT("time_source.current", 0),
 
-    
     STAGE_INTEGRITY("stage.integrity", 0),
     STAGE_SIGNED_ATTRIBUTES("stage.signed_attributes", 0),
     STAGE_TIMESTAMP("stage.timestamp", 0),
@@ -73,24 +63,20 @@ public enum MsgKey {
     STAGE_REVOCATION("stage.revocation", 0),
     STAGE_ARCHIVE_TIMESTAMP("stage.archive_timestamp", 0),
 
-    
     KEY_ALG_RSA("key_alg.rsa", 0),
     KEY_ALG_GOST("key_alg.gost", 0),
 
-    
     CA_NCA("ca.nca", 0),
     CA_BTSD("ca.btsd", 0),
     CA_UCGO("ca.ucgo", 0),
     CA_UNKNOWN("ca.unknown", 0),
     CA_MIXED("ca.mixed", 0),
 
-    
     REV_SOURCE_OCSP("rev_source.ocsp", 0),
     REV_SOURCE_CRL_EMBEDDED("rev_source.crl_embedded", 0),
     REV_SOURCE_CRL_FILE("rev_source.crl_file", 0),
     REV_SOURCE_CRL_REFERENCE("rev_source.crl_reference", 0),
 
-    
     REVOCATION_REASON_UNSPECIFIED("revocation_reason.unspecified", 0),
     REVOCATION_REASON_KEY_COMPROMISE("revocation_reason.key_compromise", 0),
     REVOCATION_REASON_CA_COMPROMISE("revocation_reason.ca_compromise", 0),
@@ -102,7 +88,6 @@ public enum MsgKey {
     REVOCATION_REASON_PRIVILEGE_WITHDRAWN("revocation_reason.privilege_withdrawn", 0),
     REVOCATION_REASON_AA_COMPROMISE("revocation_reason.aa_compromise", 0),
 
-    
     RULES_TIMESTAMP_REQUIRED_ABSENT("rules.timestamp_required_absent", 0),
     RULES_TIMESTAMP_ABSENT_WARN("rules.timestamp_absent_warn", 0),
     RULES_TIMESTAMP_TSA_NO_EKU("rules.timestamp_tsa_no_eku", 0),
@@ -126,7 +111,6 @@ public enum MsgKey {
     RULES_KEY_USAGE_NO_NON_REPUDIATION("rules.key_usage_no_non_repudiation", 0),
     RULES_KEY_USAGE_NOT_FOR_SIGNING("rules.key_usage_not_for_signing", 0),
 
-    
     PROVIDER_TRACE_ANCHOR_BOUND("provider.trace_anchor_bound", 0),
     PROVIDER_TRACE_ANCHOR_BOUND_WITH_CA("provider.trace_anchor_bound_with_ca", 1),
     PROVIDER_TRACE_ANCHOR_NOT_BOUND("provider.trace_anchor_not_bound", 1),
@@ -213,20 +197,16 @@ public enum MsgKey {
     PROVIDER_LABEL_TSA_CERT_SUFFIX("provider.label_tsa_cert_suffix", 0),
     PROVIDER_TRACE_REVOCATION_PREFIX("provider.trace_revocation_prefix", 1),
 
-    
     COMMON_FOREIGN_SIGNATURE_DETAIL("common.foreign_signature_detail", 0),
     COMMON_UNRESOLVED_SIGNER_DETAIL("common.unresolved_signer_detail", 0),
 
-    
     CONTAINER_READ_FAILED("container.read_failed", 1),
     CONTAINER_DOCUMENT_READ_FAILED("container.document_read_failed", 1),
     CONTAINER_PARSE_CMS_FAILED("container.parse_cms_failed", 1),
 
-    
     ENGINE_PROVIDER_STAGE_UNSUPPORTED("engine.provider_stage_unsupported", 0),
     ENGINE_STAGE_NO_RESULT("engine.stage_no_result", 0),
 
-    
     ONLINE_TRACE_SIGNER_CERT_MISSING("online.trace_signer_cert_missing", 1),
     ONLINE_TRACE_ISSUER_MISSING("online.trace_issuer_missing", 1),
     ONLINE_TRACE_ENDPOINT_UNSUPPORTED("online.trace_endpoint_unsupported", 1),
@@ -258,7 +238,6 @@ public enum MsgKey {
     ONLINE_TRACE_AUGMENTED_COUNT("online.trace_augmented_count", 2),
     ONLINE_MERGE_GAP("online.merge_gap", 1),
 
-    
     PARSING_CERTS_READ_FAILED("parsing.certs_read_failed", 1),
     PARSING_NO_SIGNERS("parsing.no_signers", 0),
     PARSING_BIND_DIGEST_FAILED("parsing.bind_digest_failed", 1),
@@ -266,7 +245,6 @@ public enum MsgKey {
     PARSING_PEM_BAD_HEADER("parsing.pem_bad_header", 0),
     PARSING_PEM_NO_END("parsing.pem_no_end", 0),
 
-    
     ARCHIVE_TS_TST_PARSE_FAILED("archive_ts.tst_parse_failed", 1),
     ARCHIVE_TS_NO_ATS_HASH_INDEX("archive_ts.no_ats_hash_index", 0),
     ARCHIVE_TS_ATS_HASH_INDEX_PARSE_FAILED("archive_ts.ats_hash_index_parse_failed", 1),
@@ -283,7 +261,6 @@ public enum MsgKey {
     ARCHIVE_TS_MARK_FAILURE("archive_ts.mark_failure", 3),
     ARCHIVE_TS_ALL_VALID("archive_ts.all_valid", 1),
 
-    
     DDCARD_NOT_PDF("ddcard.not_pdf", 0),
     DDCARD_NO_EMBEDDED_FILES("ddcard.no_embedded_files", 0),
     DDCARD_NO_SIGNATURES("ddcard.no_signatures", 0),
@@ -293,27 +270,22 @@ public enum MsgKey {
     DDCARD_ATTACHMENT_NO_EF_STREAM("ddcard.attachment_no_ef_stream", 0),
     DDCARD_ATTACHMENT_OPEN_FAILED("ddcard.attachment_open_failed", 2),
 
-    
     KALKAN_JAR_PATH_PROPERTY_MISSING("kalkan_jar.path_property_missing", 1),
     KALKAN_JAR_NOT_FOUND("kalkan_jar.not_found", 1),
     KALKAN_JAR_SHA256_COMPUTE_FAILED("kalkan_jar.sha256_compute_failed", 2),
     KALKAN_JAR_SHA256_MISMATCH("kalkan_jar.sha256_mismatch", 3),
 
-    
     LIBRARY_JARS_PATH_PROPERTY_MISSING("library_jars.path_property_missing", 1),
     LIBRARY_JARS_NOT_FOUND("library_jars.not_found", 1),
     LIBRARY_JARS_SHA256_COMPUTE_FAILED("library_jars.sha256_compute_failed", 2),
     LIBRARY_JARS_SHA256_MISMATCH("library_jars.sha256_mismatch", 3),
 
-    
     MANIFEST_TRUST_TRUSTED_CERT_NOT_FOUND("manifest_trust.trusted_cert_not_found", 1),
     MANIFEST_TRUST_READ_FAILED("manifest_trust.read_failed", 2),
     MANIFEST_TRUST_PARSE_FAILED("manifest_trust.parse_failed", 2),
     MANIFEST_TRUST_CERT_FACTORY_FAILED("manifest_trust.cert_factory_failed", 1),
     MANIFEST_TRUST_CERT_PARSE_FAILED("manifest_trust.cert_parse_failed", 1),
 
-    
-    
     ATTACHED_SPLITTER_WRONG_CONTENT_TYPE("attached_splitter.wrong_content_type", 1),
     ATTACHED_SPLITTER_ECONTENT_ABSENT("attached_splitter.econtent_absent", 0),
     ATTACHED_SPLITTER_ECONTENT_NOT_OCTET_STRING("attached_splitter.econtent_not_octet_string", 1),
@@ -346,7 +318,6 @@ public enum MsgKey {
     ATTACHED_SPLITTER_EXPECT_ECONTENT_WRAPPER("attached_splitter.expect_econtent_wrapper", 0),
     ATTACHED_SPLITTER_TAG_MISMATCH("attached_splitter.tag_mismatch", 3),
 
-    
     JSON_TRAILING_DATA("json.trailing_data", 1),
     JSON_EXPECTED_COMMA_OR_CLOSE_BRACE("json.expected_comma_or_close_brace", 1),
     JSON_EXPECTED_COMMA_OR_CLOSE_BRACKET("json.expected_comma_or_close_bracket", 1),
@@ -354,18 +325,15 @@ public enum MsgKey {
     JSON_EXPECTED_LITERAL("json.expected_literal", 2),
     JSON_EXPECTED_CHAR("json.expected_char", 2),
 
-    
     CLI_ERROR("cli.error", 1),
     CLI_FLAG_REQUIRES_VALUE("cli.flag_requires_value", 1),
     CLI_UNKNOWN_FLAG("cli.unknown_flag", 1),
     CLI_EXTRA_POSITIONAL_ARG("cli.extra_positional_arg", 1),
     CLI_FILE_READ_FAILED("cli.file_read_failed", 1),
     CLI_FILE_READ_WRITE_FAILED("cli.file_read_write_failed", 1),
-    
-    
+
     CLI_INVALID_LANG("cli.invalid_lang", 2),
 
-    
     MAIN_BATCH_WITH_POSITIONAL("main.batch_with_positional", 0),
     MAIN_CONTAINER_REQUIRED("main.container_required", 0),
     MAIN_INTEGRITY_TEST_COMBINED_UNSUPPORTED("main.integrity_test_combined_unsupported", 0),
@@ -379,12 +347,9 @@ public enum MsgKey {
     MAIN_INVALID_ENGINE("main.invalid_engine", 1),
     MAIN_INVALID_FORMAT("main.invalid_format", 1),
 
-    
-    
     MAIN_VERSION_LINE("main.version_line", 1),
     MAIN_VERBOSE_PREFIX("main.verbose_prefix", 1),
 
-    
     HASH_FILE_REQUIRED("hash.file_required", 0),
     HASH_INVALID_ALGO("hash.invalid_algo", 2),
     HASH_ALGO_UNSUPPORTED("hash.algo_unsupported", 2),
@@ -392,7 +357,7 @@ public enum MsgKey {
     HASH_LINE_FILE("hash.line_file", 2),
     HASH_LINE_ALGORITHM("hash.line_algorithm", 2),
     HASH_LINE_LIBRARY("hash.line_library", 1),
-    
+
     HASH_LIB_LABEL("hash.lib_label", 1),
     HASH_LINE_HASH_HEX("hash.line_hash_hex", 1),
     HASH_LINE_HASH_BASE64("hash.line_hash_base64", 1),
@@ -402,7 +367,6 @@ public enum MsgKey {
     HASH_ALGO_LABEL_GOST95("hash.algo_label_gost95", 0),
     HASH_ALGO_LABEL_GOST94("hash.algo_label_gost94", 0),
 
-    
     SIGN_MULTIPLE_OPS("sign.multiple_ops", 0),
     SIGN_FORCE_NOT_APPLICABLE("sign.force_not_applicable", 0),
     SIGN_INDEX_NOT_APPLICABLE("sign.index_not_applicable", 0),
@@ -419,7 +383,6 @@ public enum MsgKey {
     SIGN_INVALID_INDEX("sign.invalid_index", 1),
     SIGN_INVALID_SORT("sign.invalid_sort", 1),
 
-    
     SIGN_DOCUMENT_ONLY_FOR_COSIGN("sign.document_only_for_cosign", 0),
     SIGN_LINE_KEY("sign.line_key", 1),
     SIGN_LINE_MODE("sign.line_mode", 2),
@@ -444,7 +407,6 @@ public enum MsgKey {
     SIGN_LINE_NEW_SIGNER_ADDED("sign.line_new_signer_added", 2),
     SIGN_AUGMENTING_COSIGN("sign.augmenting_cosign", 0),
 
-    
     SIGN_ACTION_ADD_CHAIN("sign.action_add_chain", 0),
     SIGN_SIGNER_CERT_NOT_FOUND("sign.signer_cert_not_found", 1),
     SIGN_CHAIN_ISSUER_NOT_FOUND("sign.chain_issuer_not_found", 1),
@@ -452,7 +414,6 @@ public enum MsgKey {
     SIGN_CHAIN_ALREADY_PRESENT("sign.chain_already_present", 0),
     SIGN_ACTION_ADD_ARCHIVE("sign.action_add_archive", 0),
 
-    
     SIGN_UNREACHABLE("sign.unreachable", 1),
     SIGN_ACTION_ADD_ATTR("sign.action_add_attr", 1),
     SIGN_ACTION_STRIP_TSP("sign.action_strip_tsp", 0),
@@ -463,11 +424,9 @@ public enum MsgKey {
     SIGN_STRIP_SIGNATURE_REQUIRES_INDEX("sign.strip_signature_requires_index", 0),
     SIGN_ACTION_STRIP_SIGNATURE("sign.action_strip_signature", 1),
 
-    
     SIGN_ACTION_SORT("sign.action_sort", 1),
     SIGN_NO_CHANGES("sign.no_changes", 0),
 
-    
     SIGN_KEY_FILE_NOT_FOUND("sign.key_file_not_found", 1),
     SIGN_KEYS_DIR_MISSING("sign.keys_dir_missing", 1),
     SIGN_KEYS_DIR_READ_FAILED("sign.keys_dir_read_failed", 2),
@@ -477,11 +436,9 @@ public enum MsgKey {
     SIGN_PASSWORD_PROMPT("sign.password_prompt", 0),
     SIGN_PASSWORD_INPUT_CANCELLED("sign.password_input_cancelled", 0),
 
-    
     SIGN_CADES_INDEX_OUT_OF_RANGE("sign_cades.index_out_of_range", 2),
     SIGN_CADES_TST_SERIALIZE_FAILED("sign_cades.tst_serialize_failed", 1),
 
-    
     ATTR_OPS_SIGNER_CERT_NOT_FOUND("attr_ops.signer_cert_not_found", 1),
     ATTR_OPS_TSP_BLOCKS_ATOMIC("attr_ops.tsp_blocks_atomic", 1),
     ATTR_OPS_OCSP_BLOCKS_ATOMIC("attr_ops.ocsp_blocks_atomic", 1),
@@ -499,7 +456,6 @@ public enum MsgKey {
     ATTR_OPS_UNSIGNED_STRIPPED("attr_ops.unsigned_stripped", 1),
     ATTR_OPS_ARCHIVE_GUARD("attr_ops.archive_guard", 2),
 
-    
     ARCHIVE_STAMP_UNKNOWN_DIGEST_ALGO("archive_stamp.unknown_digest_algo", 2),
     ARCHIVE_STAMP_TSA_REQUEST_FAILED("archive_stamp.tsa_request_failed", 2),
     ARCHIVE_STAMP_ADDED("archive_stamp.added", 3),
@@ -514,7 +470,6 @@ public enum MsgKey {
     ARCHIVE_STAMP_STRIPPED_ALL("archive_stamp.stripped_all", 2),
     ARCHIVE_STAMP_STRIPPED_LAST("archive_stamp.stripped_last", 3),
 
-    
     STRICT_BLT_SIGNER_CERT_NOT_FOUND("strict_blt.signer_cert_not_found", 0),
     STRICT_BLT_NO_EMBEDDED_OCSP("strict_blt.no_embedded_ocsp", 0),
     STRICT_BLT_OCSP_NO_RESPONDER_CERT("strict_blt.ocsp_no_responder_cert", 0),
@@ -531,22 +486,18 @@ public enum MsgKey {
     STRICT_BLT_TST_CERTS_READ_FAILED("strict_blt.tst_certs_read_failed", 1),
     STRICT_BLT_TST_PARSE_FAILED("strict_blt.tst_parse_failed", 1),
 
-    
     SIGNER_SELECTOR_MULTIPLE_SIGNERS_NEED_INDEX("signer_selector.multiple_signers_need_index", 1),
     SIGNER_SELECTOR_INDEX_OUT_OF_RANGE("signer_selector.index_out_of_range", 3),
 
-    
     CERTIFICATES_OPS_ARCHIVE_GUARD("certificates_ops.archive_guard", 1),
     CERTIFICATES_OPS_CERT_ENCODE_FAILED("certificates_ops.cert_encode_failed", 1),
     CERTIFICATES_OPS_CERT_PARSE_FAILED("certificates_ops.cert_parse_failed", 1),
 
-    
     CADES_BLT_ISSUER_NOT_FOUND("cades_blt.issuer_not_found", 1),
     CADES_BLT_SIGNER_CERT_NOT_FOUND("cades_blt.signer_cert_not_found", 0),
     CADES_BLT_LINE_TSA_REQUEST("cades_blt.line_tsa_request", 1),
     CADES_BLT_LINE_OCSP_REQUEST("cades_blt.line_ocsp_request", 2),
 
-    
     SORT_SIGNER_INFOS_NOTHING_TO_SORT("sort_signer_infos.nothing_to_sort", 1),
     SORT_SIGNER_INFOS_MISMATCH("sort_signer_infos.mismatch", 2),
     SORT_SIGNER_INFOS_LINE_GEN_TIME("sort_signer_infos.line_gen_time", 2),
@@ -556,16 +507,13 @@ public enum MsgKey {
     SORT_SIGNER_INFOS_CRITERION_TIME("sort_signer_infos.criterion_time", 0),
     SORT_SIGNER_INFOS_CRITERION_DER("sort_signer_infos.criterion_der", 0),
 
-    
     STRIP_SIGNATURE_ONLY_ONE("strip_signature.only_one", 0),
     STRIP_SIGNATURE_REMOVED("strip_signature.removed", 2),
 
-    
     CO_SIGN_UNSUPPORTED_CONTENT_TYPE("co_sign.unsupported_content_type", 2),
     CO_SIGN_DETACHED_NEEDS_DOCUMENT("co_sign.detached_needs_document", 0),
     CO_SIGN_ARCHIVE_GUARD("co_sign.archive_guard", 1),
 
-    
     KZ_EKU_ROLE_INDIVIDUAL("kz_eku_role.individual", 0),
     KZ_EKU_ROLE_INDIVIDUAL_INFO_SYSTEM("kz_eku_role.individual_info_system", 0),
     KZ_EKU_ROLE_LEGAL_ENTITY("kz_eku_role.legal_entity", 0),
@@ -580,17 +528,13 @@ public enum MsgKey {
     KZ_EKU_ROLE_DEPARTMENTAL_ARCHIVE_EMPLOYEE("kz_eku_role.departmental_archive_employee", 0),
     KZ_EKU_ROLE_CIVIL_SERVANT("kz_eku_role.civil_servant", 0),
 
-    
     RUNNER_KALKAN_C_UNAVAILABLE("runner.kalkan_c_unavailable", 0),
     RUNNER_UNKNOWN_CA_PROVIDER("runner.unknown_ca_provider", 1),
 
-    
     VERIFY_LIBRARY_JARS_CONFIRMED("verify_library_jars.confirmed", 1),
 
-    
     VERIFICATION_PROVIDER_DETACHED_UNSUPPORTED("verification_provider.detached_unsupported", 1),
 
-    
     MESSAGES_ARG_COUNT_MISMATCH("messages.arg_count_mismatch", 3),
     MESSAGES_RESOURCE_NOT_FOUND("messages.resource_not_found", 1),
     JSON_WRITER_UNSUPPORTED_TYPE("json_writer.unsupported_type", 1),
@@ -610,12 +554,10 @@ public enum MsgKey {
         this.argCount = argCount;
     }
 
-    
     public String key() {
         return key;
     }
 
-    
     public int argCount() {
         return argCount;
     }

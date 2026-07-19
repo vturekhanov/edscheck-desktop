@@ -8,6 +8,7 @@ set "CORE_JAR=%REPO_ROOT%\dist\eds-check.jar"
 set "GUI_JAR=%REPO_ROOT%\dist\eds-check-gui.jar"
 set "KALKAN_JAR=%REPO_ROOT%\lib\kalkancrypt-0.7.6-certified.jar"
 set "LIB_DIR=%REPO_ROOT%\lib"
+set "CERTS_DIR=%REPO_ROOT%\certs"
 
 set "JDK_BIN=%REPO_ROOT%\.jdk\bin"
 if exist "%JDK_BIN%\java.exe" goto :jdk_found
@@ -43,4 +44,4 @@ for %%f in ("%LIB_DIR%\*.jar") do set "CP=!CP!;%%f"
 
 cd /d "%REPO_ROOT%"
 
-"%JDK_JAVA%" -cp "!CP!" -Dkz.edscheck.kalkanJar="%KALKAN_JAR%" -Dkz.edscheck.libDir="%LIB_DIR%" kz.edscheck.gui.GuiMain
+"%JDK_JAVA%" -cp "!CP!" -Dkz.edscheck.kalkanJar="%KALKAN_JAR%" -Dkz.edscheck.libDir="%LIB_DIR%" -Dkz.edscheck.certsDir="%CERTS_DIR%" -Dflatlaf.nativeLibraryPath="%LIB_DIR%" kz.edscheck.gui.GuiMain

@@ -2,7 +2,6 @@ package kz.edscheck.trust;
 
 import java.util.Map;
 
-
 public final class DigestAlgorithms {
     private static final Map<String, String> OID_TO_NAME = Map.of(
         "1.2.398.3.10.1.3.1", "GOST3411",
@@ -17,7 +16,6 @@ public final class DigestAlgorithms {
     private DigestAlgorithms() {
     }
 
-    
     public static String jceName(String oid) {
         return oid == null ? null : OID_TO_NAME.get(oid);
     }

@@ -36,12 +36,11 @@ import kz.edscheck.sign.cades.StrictBlt;
 import kz.edscheck.sign.cades.StripSignature;
 import kz.edscheck.trust.KalkanJar;
 import kz.edscheck.trust.KalkanJarException;
-
+import kz.edscheck.trust.KalkanProviderRegistrar;
 
 public final class SignMain {
     private static final Path KEYS_VALID_DIR = Paths.get(".keys", "valid");
 
-    
     private static String usage() {
         return Messages.resource("/kz/edscheck/msg/usage/sign_" + Messages.locale().getLanguage() + ".txt");
     }
@@ -63,8 +62,7 @@ public final class SignMain {
             System.err.print(usage());
             return 2;
         }
-        
-        
+
         Messages.setLocale(Locale.of(parsed.lang));
         if (parsed.help) {
             System.out.print(usage());
@@ -163,12 +161,11 @@ public final class SignMain {
         return SignerSelector.at(Integer.parseInt(parsed.index));
     }
 
-    
     private static int runSign(Args parsed) {
         char[] password = null;
         try {
             KalkanJar.resolveAndVerify();
-            KalkanJar.ensureSecurityProviderRegistered();
+            KalkanProviderRegistrar.ensureSecurityProviderRegistered();
 
             byte[] inputBytes = Files.readAllBytes(Paths.get(parsed.inputFile));
             if (CoSign.looksLikeCades(inputBytes)) {
@@ -246,7 +243,6 @@ public final class SignMain {
         }
     }
 
-    
     private static int runCoSign(Args parsed, byte[] existingCmsDer) {
         char[] password = null;
         try {
@@ -325,7 +321,6 @@ public final class SignMain {
         }
     }
 
-    
     private static int runAddChain(Path chainPath, String out, SignerSelector selector) {
         return runAttrOp(chainPath, out, "_fullchain", Messages.get(MsgKey.SIGN_ACTION_ADD_CHAIN) + " ",
             cmsDer -> {
@@ -354,7 +349,6 @@ public final class SignMain {
         });
     }
 
-    
     private static int runArchive(Path archivePath, String out, SignerSelector selector) {
         return runAttrOp(archivePath, out, "_archived", Messages.get(MsgKey.SIGN_ACTION_ADD_ARCHIVE) + " ",
             cmsDer -> ArchiveTimestamp.addArchiveTimestamp(
@@ -362,7 +356,6 @@ public final class SignMain {
                 archivePath.toString(), selector));
     }
 
-    
     private static int runAdd(Args parsed) {
         SignerSelector selector = selectorFromArgs(parsed);
         if ("chain".equals(parsed.addTarget)) {
@@ -383,7 +376,6 @@ public final class SignMain {
             cmsDer -> AttrOps.add(cmsDer, targets, parsed.force, selector));
     }
 
-    
     private static int runStrip(Args parsed) {
         SignerSelector selector = selectorFromArgs(parsed);
         return switch (parsed.stripTarget) {
@@ -409,7 +401,6 @@ public final class SignMain {
         };
     }
 
-    
     private static int runSortSignerInfos(Args parsed) {
         SortSignerInfos.Criterion criterion = "der".equals(parsed.sortSignerInfos)
             ? SortSignerInfos.Criterion.DER : SortSignerInfos.Criterion.TIME;
@@ -418,7 +409,6 @@ public final class SignMain {
             cmsDer -> SortSignerInfos.sort(cmsDer, criterion));
     }
 
-    
     private static int runAttrOp(Path inPath, String out, String suffix, String actionLabel,
                                   Function<byte[], AttrOps.Result> op) {
         try {
@@ -459,7 +449,6 @@ public final class SignMain {
         Files.write(outPath, data);
     }
 
-    
     private static Path withSuffix(Path path, String suffix) {
         String name = path.getFileName().toString();
         int dot = name.lastIndexOf('.');
@@ -480,7 +469,6 @@ public final class SignMain {
         return findValidP12();
     }
 
-    
     private static Path findValidP12() {
         if (!Files.isDirectory(KEYS_VALID_DIR)) {
             throw new SignException(Messages.get(MsgKey.SIGN_KEYS_DIR_MISSING, KEYS_VALID_DIR));
@@ -513,8 +501,7 @@ public final class SignMain {
         if (console == null) {
             throw new SignException(Messages.get(MsgKey.SIGN_NO_INTERACTIVE_CONSOLE));
         }
-        
-        
+
         char[] pwd = console.readPassword(Messages.get(MsgKey.SIGN_PASSWORD_PROMPT) + " ");
         if (pwd == null) {
             throw new SignException(Messages.get(MsgKey.SIGN_PASSWORD_INPUT_CANCELLED));

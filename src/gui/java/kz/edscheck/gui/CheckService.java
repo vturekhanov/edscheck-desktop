@@ -12,12 +12,10 @@ import kz.edscheck.app.RunResult;
 import kz.edscheck.app.Runner;
 import kz.edscheck.app.RunnerParams;
 
-
 public final class CheckService {
-    
+
     public static final long DEFAULT_TIMEOUT_SECONDS = 15;
 
-    
     public sealed interface Result {
         record Success(RunResult result) implements Result {
         }
@@ -46,7 +44,6 @@ public final class CheckService {
         this.runnerExecutor = newRunnerExecutor();
     }
 
-    
     public void submit(RunnerParams params, Consumer<Result> callback) {
         queueExecutor.execute(() -> callback.accept(runOne(params)));
     }

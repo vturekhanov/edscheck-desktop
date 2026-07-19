@@ -9,7 +9,6 @@ import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.parsing.ParsedSigner;
 
-
 public final class CommonSigners {
     private static final String FOREIGN_DETAIL = Messages.get(MsgKey.COMMON_FOREIGN_SIGNATURE_DETAIL);
     private static final String UNRESOLVED_DETAIL = Messages.get(MsgKey.COMMON_UNRESOLVED_SIGNER_DETAIL);
@@ -17,7 +16,6 @@ public final class CommonSigners {
     private CommonSigners() {
     }
 
-    
     public static SignerVerification unresolvedSigner(ParsedSigner ps) {
         return new SignerVerification(
             ps.index(), ps.certificate(), ps.keyUsage(),
@@ -29,7 +27,6 @@ public final class CommonSigners {
             ps.missingBbAttrs());
     }
 
-    
     public static SignerVerification foreignSigner(ParsedSigner ps) {
         return new SignerVerification(
             ps.index(), ps.certificate(), ps.keyUsage(),

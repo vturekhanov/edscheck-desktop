@@ -38,14 +38,12 @@ import kz.edscheck.trust.Json;
 import kz.edscheck.trust.KalkanJarException;
 import kz.edscheck.trust.LibraryJarException;
 
-
 public final class Main {
-    
+
     private static String usage() {
         return Messages.resource("/kz/edscheck/msg/usage/eds-check_" + Messages.locale().getLanguage() + ".txt");
     }
 
-    
     static final long MAX_MATERIALIZED_BYTES = 500L * 1024 * 1024;
 
     private Main() {
@@ -65,8 +63,7 @@ public final class Main {
             System.err.print(usage());
             return 2;
         }
-        
-        
+
         Messages.setLocale(Locale.of(parsed.lang));
 
         if (parsed.help) {
@@ -102,16 +99,12 @@ public final class Main {
         return result.exitCode();
     }
 
-    
     private static JobResult runContainer(Args parsed) {
         try {
             Trace trace = parsed.verbosity > 0
                 ? message -> System.err.println(Messages.get(MsgKey.MAIN_VERBOSE_PREFIX, NativeDates.localize(message)))
                 : Trace.NONE;
-            
-            
-            
-            
+
             DocumentSource documentSource = parsed.document != null
                 ? documentSource(parsed.document) : null;
 
@@ -150,7 +143,6 @@ public final class Main {
         }
     }
 
-    
     static SignedContainer annotateOnline(
             SignedContainer container, Map<Integer, Online.AugmentedSigner> augmented) {
         List<Signature> signatures = new ArrayList<>();
@@ -175,7 +167,6 @@ public final class Main {
             signatures, container.containerFormat(), container.documentName(), container.authority());
     }
 
-    
     private static int runBatch(Args template) {
         Object manifestRaw;
         try {
@@ -230,17 +221,14 @@ public final class Main {
         return 0;
     }
 
-    
     private record JobResult(int exitCode, String stdout, String stderr) {
     }
 
-    
     private record ContainerAcquisition(
             DocumentSource source, String containerPath,
             Map<Integer, Online.AugmentedSigner> onlineAugmented) {
     }
 
-    
     private static ContainerAcquisition acquireContainer(Args parsed, Trace trace) {
         try {
             String containerPath = parsed.container;
@@ -253,8 +241,7 @@ public final class Main {
                 return new ContainerAcquisition(DocumentSource.ofFile(p), containerPath, Map.of());
             }
             if (!ddcard) {
-                
-                
+
                 long size = Files.size(p);
                 if (size > MAX_MATERIALIZED_BYTES) {
                     throw new OperationalException(Messages.get(MsgKey.MAIN_ONLINE_REQUIRES_FULL_BYTES,
@@ -267,7 +254,6 @@ public final class Main {
         }
     }
 
-    
     private static ContainerAcquisition withOnlineAugmentation(
             Args parsed, byte[] bytes, String containerPath, Trace trace) {
         if (parsed.online && "cms".equals(Ddcard.detectInputFormat(bytes))) {
@@ -287,11 +273,7 @@ public final class Main {
                 }
             }
             Path p = Paths.get(path);
-            
-            
-            
-            
-            
+
             if (looksLikeDdcardPdf(p)) {
                 long size = Files.size(p);
                 if (size > MAX_MATERIALIZED_BYTES) {
@@ -313,15 +295,9 @@ public final class Main {
         }
     }
 
-    
     private static DocumentSource documentSource(String path) {
         return "-".equals(path) ? DocumentSource.ofStdin() : DocumentSource.ofFile(Paths.get(path));
     }
-
-    
-    
-    
-    
 
     private static final class ArgsException extends RuntimeException {
         ArgsException(String message) {
@@ -348,7 +324,6 @@ public final class Main {
         String batch;
         String lang = Messages.DEFAULT_LOCALE.getLanguage();
 
-        
         Args forBatchJob(String jobContainer, List<String> jobCrls) {
             Args a = new Args();
             a.ca = this.ca;

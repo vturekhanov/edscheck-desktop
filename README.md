@@ -46,6 +46,7 @@ tar -xzf /tmp/temurin21.tar.gz -C .jdk --strip-components=1
 ```
 
 Windows (x64):
+
 Скачать zip-архив [Temurin 21 для Windows x64](https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk) и распаковать в `.jdk\` в корне репозитория так, чтобы получился путь `.jdk\bin\java.exe` (архив, как и на macOS, может быть вложен на один уровень глубже — при необходимости переместите содержимое вложенной папки на уровень выше).
 
 ### 2. KalkanCrypt JCE-провайдер
@@ -62,7 +63,22 @@ kalkancrypt-0.7.6-certified.jar
 
 ### 3. Собрать и запустить
 
-macOS и Linux:
+macOS:
+Запустить только **один раз**, если раньше не устанавливались Xcode Command Line Tools. Нужны для build-macos-arm64.sh — он вызывает нативные утилиты macOS (codesign, pkgbuild, hdiutil, sips, iconutil), которых нет на чистой системе без этого пакета.
+```sh
+xcode-select --install
+```
+
+Запускать после установки Xcode Command Line Tools.
+```sh
+./build-macos-arm64.sh
+```
+
+Если всё пройдёт хорошо, готовое приложение будет лежать в папке `dist`.
+
+Если по каким-то причинам хотите обойтись без установки Xcode Command Line Tools, просто выполните команды для Linux (см. ниже). Под macOS они тоже сработают.
+
+Linux:
 ```sh
 ./build.sh && ./build-gui.sh
 bin/EDScheck

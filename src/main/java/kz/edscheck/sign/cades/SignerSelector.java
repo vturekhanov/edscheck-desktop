@@ -5,7 +5,6 @@ import java.util.List;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class SignerSelector {
     private enum Kind { SINGLE, INDEX, ALL }
 
@@ -36,7 +35,6 @@ public final class SignerSelector {
         return kind == Kind.ALL;
     }
 
-    
     public List<Integer> resolve(int signerCount) {
         return switch (kind) {
             case SINGLE -> {

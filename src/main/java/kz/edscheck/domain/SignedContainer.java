@@ -2,7 +2,6 @@ package kz.edscheck.domain;
 
 import java.util.List;
 
-
 public record SignedContainer(
         String sourcePath,
         Encoding encoding,
@@ -19,7 +18,6 @@ public record SignedContainer(
         }
     }
 
-    
     public SignedContainer(
             String sourcePath, Encoding encoding, int signaturesTotal,
             List<Signature> signatures) {

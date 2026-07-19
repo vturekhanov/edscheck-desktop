@@ -11,12 +11,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 
-
 public final class Messages {
-    
+
     public static final Locale DEFAULT_LOCALE = Locale.of("ru");
 
-    
     public static final List<String> SUPPORTED_LOCALES = List.of("ru");
 
     private static Locale currentLocale = DEFAULT_LOCALE;
@@ -25,7 +23,6 @@ public final class Messages {
     private Messages() {
     }
 
-    
     public static void setLocale(Locale locale) {
         currentLocale = locale;
     }
@@ -41,8 +38,7 @@ public final class Messages {
 
     public static String get(MsgKey key, Object... args) {
         if (args.length != key.argCount()) {
-            
-            
+
             throw new IllegalArgumentException(
                 get(MsgKey.MESSAGES_ARG_COUNT_MISMATCH, key, key.argCount(), args.length));
         }
@@ -57,7 +53,6 @@ public final class Messages {
         return new MessageFormat(pattern, Locale.ROOT).format(strings);
     }
 
-    
     public static String resource(String path) {
         try (InputStream in = Messages.class.getResourceAsStream(path)) {
             if (in == null) {

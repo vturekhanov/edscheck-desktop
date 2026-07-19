@@ -1,6 +1,5 @@
 package kz.edscheck.errors;
 
-
 public class OperationalException extends EdsCheckException {
     public OperationalException(String message) {
         super(message);

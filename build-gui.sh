@@ -69,8 +69,13 @@ if [ -d "$RES_DIR" ]; then
     cp -R "$RES_DIR/." "$BUILD_DIR/"
 fi
 
+MANIFEST_EXTRA="$DIR/build/gui/premain-manifest.txt"
+printf 'Premain-Class: kz.edscheck.gui.GuiAgent\n' > "$MANIFEST_EXTRA"
+
 "$JAR_TOOL" --create --file "$DIST_DIR/eds-check-gui.jar" \
+    --manifest "$MANIFEST_EXTRA" \
     --main-class kz.edscheck.gui.GuiMain \
     -C "$BUILD_DIR" .
+rm -f "$MANIFEST_EXTRA"
 
 echo "собрано: $DIST_DIR/eds-check-gui.jar (запуск — bin/EDScheck, classpath включает dist/eds-check.jar)"

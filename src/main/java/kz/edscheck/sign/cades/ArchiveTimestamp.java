@@ -45,11 +45,8 @@ import kz.edscheck.trust.KalkanJar;
 import kz.edscheck.trust.KalkanJarException;
 import kz.edscheck.trust.ManifestTrust;
 
-
 public final class ArchiveTimestamp {
-    
-    
-    
+
     static final String OID_ATS_HASH_INDEX_V3 = "0.4.0.19122.1.5";
     static final String OID_ARCHIVE_TIMESTAMP_V3 = "0.4.0.1733.2.4";
     private static final String OID_SIGNATURE_TS_TOKEN = "1.2.840.113549.1.9.16.2.14";
@@ -60,7 +57,6 @@ public final class ArchiveTimestamp {
     private ArchiveTimestamp() {
     }
 
-    
     public static AttrOps.Result addArchiveTimestamp(
             byte[] cmsDer, String tsaUrl, String reqPolicy, String displayPath, SignerSelector selector) {
         ContentInfo outer = parseOuter(cmsDer);
@@ -117,7 +113,6 @@ public final class ArchiveTimestamp {
         return new AttrOps.Result(newOuter.getDEREncoded(), true, messages);
     }
 
-    
     private static void requireArchiveGuards(
             byte[] cmsDer, String displayPath, ASN1Set signerInfos, List<Integer> indices) {
         Environment env = Environment.PROD;
@@ -168,7 +163,6 @@ public final class ArchiveTimestamp {
         }
     }
 
-    
     private static boolean isReadyForArchive(SignerInfo si) {
         ASN1Set unsigned = si.getUnauthenticatedAttributes();
         boolean hasTst = false;
@@ -182,11 +176,6 @@ public final class ArchiveTimestamp {
         }
         return hasTst && hasRevocation;
     }
-
-    
-    
-    
-    
 
     static List<byte[]> hashCertificates(ASN1Set certs, String jceName) {
         List<byte[]> hashes = new ArrayList<>();
@@ -226,10 +215,7 @@ public final class ArchiveTimestamp {
 
     static byte[] buildAtsHashIndexV3(String hashAlgOid, List<byte[]> certHashes, List<byte[]> crlHashes,
                                        List<byte[]> attrHashes) {
-        
-        
-        
-        
+
         AlgorithmIdentifier algId = new AlgorithmIdentifier(new DERObjectIdentifier(hashAlgOid), null);
         ASN1EncodableVector body = new ASN1EncodableVector();
         body.add(algId);
@@ -247,7 +233,6 @@ public final class ArchiveTimestamp {
         return new DERSequence(v);
     }
 
-    
     static byte[] computeImprint(SignedData signedData, SignerInfo si, byte[] atsHashIndexDer, String jceName) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try {
@@ -289,11 +274,6 @@ public final class ArchiveTimestamp {
         }
     }
 
-    
-    
-    
-    
-
     private static byte[] embedAtsHashIndex(TimeStampToken token, byte[] atsHashIndexDer) {
         byte[] tstDer;
         try {
@@ -315,7 +295,6 @@ public final class ArchiveTimestamp {
         return rebuildWithSigner(tstSignedData, newTstSi);
     }
 
-    
     public static AttrOps.Result stripArchive(byte[] cmsDer, boolean all, SignerSelector selector) {
         ContentInfo outer = parseOuter(cmsDer);
         SignedData signedData = SignedData.getInstance(outer.getContent());
@@ -385,7 +364,6 @@ public final class ArchiveTimestamp {
         return count;
     }
 
-    
     private static ASN1Set replaceOrAdd(ASN1Set existing, Attribute newAttr) {
         ASN1EncodableVector vec = new ASN1EncodableVector();
         if (existing != null) {
@@ -400,7 +378,6 @@ public final class ArchiveTimestamp {
         return new BERSet(vec);
     }
 
-    
     private static ASN1Set appendAttribute(ASN1Set existing, Attribute newAttr) {
         ASN1EncodableVector vec = new ASN1EncodableVector();
         if (existing != null) {

@@ -3,7 +3,6 @@ package kz.edscheck.domain;
 import java.time.Instant;
 import java.util.List;
 
-
 public final class Certificate {
     private final String commonName;
     private final String iin;
@@ -35,13 +34,11 @@ public final class Certificate {
         this.notAfter = notAfter;
     }
 
-    
     public static Certificate empty() {
         return new Certificate(null, null, null, null, null, null, null,
             List.of(), List.of(), null, null);
     }
 
-    
     public static Certificate withValidity(Instant notBefore, Instant notAfter) {
         return new Certificate(null, null, null, null, null, null, null,
             List.of(), List.of(), notBefore, notAfter);
@@ -91,7 +88,6 @@ public final class Certificate {
         return notAfter;
     }
 
-    
     public static final class Builder {
         private String commonName;
         private String iin;

@@ -59,7 +59,6 @@ import kz.edscheck.parsing.Parsing;
 import kz.edscheck.trace.Trace;
 import kz.edscheck.trust.DigestAlgorithms;
 
-
 public final class Online {
     private static final String PROV = "KALKAN";
     private static final DERObjectIdentifier OID_REVOCATION_VALUES =
@@ -74,36 +73,30 @@ public final class Online {
         }
     }
 
-    
     private record Endpoint(List<Path> anchorCerts, String tsaUrl, String ocspUrlFallback,
                              String tsaReqPolicy) {
     }
 
-    
-    
-    
-    
-    
-    private static final Map<String, Endpoint> ENDPOINTS = Map.of(
-        "nca", new Endpoint(
-            List.of(Path.of("certs", "prod", "nca_gost_2022.pem")),
-            "http://tsp.pki.gov.kz/", null, "1.2.398.3.3.2.6.4"),
-        "btsd", new Endpoint(
-            List.of(Path.of("certs", "prod", "btsd_gost.cer")),
-            "https://passport.aitu.io/pki/tsp", "https://passport.aitu.io/pki/ocsp", null));
+    private static Map<String, Endpoint> endpoints() {
+        Path certsDir = kz.edscheck.trust.CertsDir.resolve();
+        return Map.of(
+            "nca", new Endpoint(
+                List.of(certsDir.resolve("prod").resolve("nca_gost_2022.pem")),
+                "http://tsp.pki.gov.kz/", null, "1.2.398.3.3.2.6.4"),
+            "btsd", new Endpoint(
+                List.of(certsDir.resolve("prod").resolve("btsd_gost.cer")),
+                "https://passport.aitu.io/pki/tsp", "https://passport.aitu.io/pki/ocsp", null));
+    }
 
-    
     public record AugmentedSigner(boolean tsaAdded, boolean ocspAdded) {
     }
 
-    
     public record AugmentResult(byte[] bytes, Map<Integer, AugmentedSigner> augmented) {
     }
 
     private Online() {
     }
 
-    
     public static AugmentResult maybeAugment(
             byte[] container, boolean crlGiven, Duration timeout, Trace trace) {
         ParsedContainer parsed = Parsing.parseContainer(container, List.of());
@@ -144,11 +137,7 @@ public final class Online {
             SignerInformation current = ps.signerInfo();
             boolean changed = false;
             try {
-                
-                
-                
-                
-                
+
                 if (needTsa) {
                     current = augmentTsa(
                         ps.index(), current, endpoint.tsaUrl(), endpoint.tsaReqPolicy(), timeout, trace);
@@ -178,13 +167,9 @@ public final class Online {
         return new AugmentResult(newDer, augmentedInfo);
     }
 
-    
-    
-    
-
-    
     public static X509Certificate loadIssuerCert(X509Certificate subject) {
-        for (Path dir : List.of(Path.of("certs", "prod"), Path.of("certs", "test"))) {
+        Path certsDir = kz.edscheck.trust.CertsDir.resolve();
+        for (Path dir : List.of(certsDir.resolve("prod"), certsDir.resolve("test"))) {
             if (!Files.isDirectory(dir)) {
                 continue;
             }
@@ -207,7 +192,7 @@ public final class Online {
                     }
                 }
             } catch (IOException ignored) {
-                
+
             }
         }
         return null;
@@ -229,7 +214,7 @@ public final class Online {
         } catch (Exception e) {
             return null;
         }
-        for (Endpoint endpoint : ENDPOINTS.values()) {
+        for (Endpoint endpoint : endpoints().values()) {
             for (Path anchorPath : endpoint.anchorCerts()) {
                 X509Certificate anchor = loadCertFile(anchorPath);
                 if (anchor == null) {
@@ -240,14 +225,13 @@ public final class Online {
                         return endpoint;
                     }
                 } catch (Exception ignored) {
-                    
+
                 }
             }
         }
         return null;
     }
 
-    
     public static String aiaOcspUrl(X509Certificate cert) {
         byte[] raw = cert.getExtensionValue(AIA_OID);
         if (raw == null) {
@@ -266,14 +250,10 @@ public final class Online {
                 }
             }
         } catch (Exception ignored) {
-            
+
         }
         return null;
     }
-
-    
-    
-    
 
     private static SignerInformation augmentOcsp(
             int index, SignerInformation si, X509Certificate subject, X509Certificate issuer,
@@ -298,14 +278,9 @@ public final class Online {
         }
     }
 
-    
     public static BasicOCSPResp requestOcsp(
             X509Certificate subject, X509Certificate issuer, String digestOid, String url, Duration timeout) {
-        
-        
-        
-        
-        
+
         byte[] nonce = new byte[16];
         new java.security.SecureRandom().nextBytes(nonce);
 
@@ -315,10 +290,7 @@ public final class Online {
             certId = new CertificateID(digestOid, issuer, subject.getSerialNumber());
             OCSPReqGenerator gen = new OCSPReqGenerator();
             gen.addRequest(certId);
-            
-            
-            
-            
+
             byte[] innerOctetDer = new DEROctetString(nonce).getDEREncoded();
             kz.gov.pki.kalkan.asn1.x509.X509Extension nonceExt =
                 new kz.gov.pki.kalkan.asn1.x509.X509Extension(false, new DEROctetString(innerOctetDer));
@@ -359,7 +331,6 @@ public final class Online {
         }
     }
 
-    
     public static AttributeTable addRevocationValues(AttributeTable existing, BasicOCSPResp basic) {
         try {
             byte[] revValuesDer = buildRevocationValues(basic);
@@ -374,7 +345,6 @@ public final class Online {
         }
     }
 
-    
     static void checkOcspNonce(BasicOCSPResp basic, byte[] expectedNonce) throws Exception {
         byte[] gotNonce = null;
         kz.gov.pki.kalkan.asn1.x509.X509Extensions exts = basic.getResponseExtensions();
@@ -393,8 +363,7 @@ public final class Online {
     }
 
     private static byte[] buildRevocationValues(BasicOCSPResp basic) throws Exception {
-        
-        
+
         byte[] basicDer = basic.getEncoded();
         Object basicObj = new ASN1InputStream(basicDer).readObject();
         ASN1EncodableVector ocspValsVec = new ASN1EncodableVector();
@@ -406,7 +375,6 @@ public final class Online {
         return new DERSequence(rvVec).getDEREncoded();
     }
 
-    
     public static kz.gov.pki.kalkan.ocsp.BasicOCSPResp extractEmbeddedBasicOcsp(AttributeTable unsignedAttrs) {
         if (unsignedAttrs == null) {
             return null;
@@ -438,11 +406,6 @@ public final class Online {
         }
     }
 
-    
-    
-    
-    
-
     private static SignerInformation augmentTsa(
             int index, SignerInformation si, String tsaUrl, String reqPolicy, Duration timeout, Trace trace) {
         String digestOid = si.getDigestAlgOID();
@@ -473,23 +436,9 @@ public final class Online {
         }
     }
 
-    
     public static TimeStampToken requestTsa(
             byte[] imprint, String digestOid, String tsaUrl, String reqPolicy, Duration timeout) {
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+
         TimeStampRequestGenerator tsGen = new TimeStampRequestGenerator();
         tsGen.setCertReq(true);
         if (reqPolicy != null) {
@@ -517,11 +466,7 @@ public final class Online {
             if (token == null) {
                 throw new OnlineException(Messages.get(MsgKey.ONLINE_TSA_NO_TOKEN, status));
             }
-            
-            
-            
-            
-            
+
             tsResp.validate(tsReq);
             return token;
         } catch (OnlineException e) {
@@ -531,7 +476,6 @@ public final class Online {
         }
     }
 
-    
     public static AttributeTable addSignatureTimestamp(AttributeTable existing, TimeStampToken token) {
         try {
             byte[] tstDer = token.getEncoded();
@@ -544,10 +488,6 @@ public final class Online {
             throw new OnlineException(Messages.get(MsgKey.ONLINE_TST_BUILD_FAILED, e.getMessage()), e);
         }
     }
-
-    
-    
-    
 
     private static AttributeTable replaceOrAdd(AttributeTable existing, Attribute newAttr) {
         ASN1EncodableVector vec = new ASN1EncodableVector();
@@ -580,7 +520,6 @@ public final class Online {
         return response.body();
     }
 
-    
     private static byte[] rebuildContainer(
             ContentInfo outer, SignedData signedData, ASN1Set rawSignerInfos,
             Map<Integer, kz.gov.pki.kalkan.asn1.cms.SignerInfo> updated) {
@@ -592,7 +531,6 @@ public final class Online {
         return newOuter.getDEREncoded();
     }
 
-    
     public static ASN1Set mergeSignerInfos(
             ASN1Set existing, Map<Integer, kz.gov.pki.kalkan.asn1.cms.SignerInfo> updated) {
         int maxIndex = existing.size() - 1;

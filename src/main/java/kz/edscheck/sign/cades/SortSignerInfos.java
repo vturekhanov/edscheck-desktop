@@ -19,7 +19,6 @@ import kz.edscheck.parsing.ParsedContainer;
 import kz.edscheck.parsing.ParsedSigner;
 import kz.edscheck.parsing.Parsing;
 
-
 public final class SortSignerInfos {
     public enum Criterion { TIME, DER }
 
@@ -76,11 +75,7 @@ public final class SortSignerInfos {
         for (int idx : order) {
             vec.add(rawSignerInfos.getObjectAt(idx));
         }
-        
-        
-        
-        
-        
+
         ASN1Set newSignerInfos = new BERSet(vec);
         SignedData newSignedData = new SignedData(
             signedData.getDigestAlgorithms(), signedData.getEncapContentInfo(),
@@ -89,7 +84,6 @@ public final class SortSignerInfos {
         return new AttrOps.Result(newOuter.getDEREncoded(), true, messages);
     }
 
-    
     private static List<Integer> orderByTime(List<Instant> genTimes) {
         List<Integer> indices = new ArrayList<>();
         for (int i = 0; i < genTimes.size(); i++) {
@@ -112,7 +106,6 @@ public final class SortSignerInfos {
         return indices;
     }
 
-    
     private static List<Integer> orderByDer(List<byte[]> encodings) {
         int maxLen = 0;
         for (byte[] e : encodings) {

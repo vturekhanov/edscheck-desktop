@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-
 public interface DocumentSource {
     InputStream open() throws IOException;
 
@@ -24,7 +23,6 @@ public interface DocumentSource {
         return () -> new ByteArrayInputStream(bytes);
     }
 
-    
     static DocumentSource ofStdin() {
         return () -> System.in;
     }

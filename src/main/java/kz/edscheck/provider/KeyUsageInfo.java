@@ -2,7 +2,6 @@ package kz.edscheck.provider;
 
 import java.util.Set;
 
-
 public record KeyUsageInfo(Set<String> usages, Set<String> extUsages) {
 
     public KeyUsageInfo {

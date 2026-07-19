@@ -27,7 +27,6 @@ import kz.edscheck.parsing.ParsedContainer;
 import kz.edscheck.parsing.ParsedSigner;
 import kz.edscheck.parsing.Parsing;
 
-
 public final class StrictBlt {
     private static final Duration TIMEOUT = Duration.ofSeconds(15);
     private static final String PROV = "KALKAN";
@@ -35,7 +34,6 @@ public final class StrictBlt {
     private StrictBlt() {
     }
 
-    
     public static byte[] apply(byte[] cmsDer, int index) {
         ParsedContainer parsed = Parsing.parseContainer(cmsDer, List.of());
         if (index < 0 || index >= parsed.signers().size()) {
@@ -150,7 +148,6 @@ public final class StrictBlt {
         }
     }
 
-    
     private static byte[] embedRevocationValuesInsideTst(TimeStampToken token, BasicOCSPResp basic) {
         byte[] tstDer;
         try {

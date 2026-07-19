@@ -8,7 +8,6 @@ import java.util.Map;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class Json {
     private final String text;
     private int pos;

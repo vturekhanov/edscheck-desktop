@@ -24,27 +24,21 @@ import kz.edscheck.parsing.ParsedContainer;
 import kz.edscheck.parsing.ParsedSigner;
 import kz.edscheck.parsing.Parsing;
 
-
 public final class AttrOps {
     public enum Attr { TSP, OCSP }
 
-    
-    
-    
     private static final DERObjectIdentifier OID_SIGNATURE_TS_TOKEN =
         new DERObjectIdentifier("1.2.840.113549.1.9.16.2.14");
     private static final DERObjectIdentifier OID_REVOCATION_VALUES =
         new DERObjectIdentifier("1.2.840.113549.1.9.16.2.24");
     private static final Duration TIMEOUT = Duration.ofSeconds(15);
 
-    
     public record Result(byte[] bytes, boolean changed, List<String> messages) {
     }
 
     private AttrOps() {
     }
 
-    
     public static Result add(byte[] cmsDer, Set<Attr> targets, boolean force, SignerSelector selector) {
         ParsedContainer parsed = Parsing.parseContainer(cmsDer, List.of());
         List<Integer> indices = selector.resolve(parsed.signers().size());
@@ -90,8 +84,7 @@ public final class AttrOps {
             }
 
             SignerInformation si = ps.signerInfo();
-            
-            
+
             if (doTsp) {
                 TimeStampToken token = CadesBltBuilder.requestTsaForSignature(
                     si, CadesBltBuilder.TSA_URL, CadesBltBuilder.TSA_REQ_POLICY);
@@ -118,7 +111,6 @@ public final class AttrOps {
         return new Result(CadesBltBuilder.rebuildAtIndices(cmsDer, updates), true, messages);
     }
 
-    
     public static Result strip(byte[] cmsDer, Attr target, SignerSelector selector) {
         ParsedContainer parsed = Parsing.parseContainer(cmsDer, List.of());
         List<Integer> indices = selector.resolve(parsed.signers().size());
@@ -151,7 +143,6 @@ public final class AttrOps {
         return new Result(CadesBltBuilder.rebuildAtIndices(cmsDer, updates), true, messages);
     }
 
-    
     public static Result stripUnsigned(byte[] cmsDer, SignerSelector selector) {
         ParsedContainer parsed = Parsing.parseContainer(cmsDer, List.of());
         List<Integer> indices = selector.resolve(parsed.signers().size());
@@ -177,9 +168,6 @@ public final class AttrOps {
         return new Result(CadesBltBuilder.rebuildAtIndices(cmsDer, updates), true, messages);
     }
 
-    
-
-    
     private static void requireNoArchiveTimestampAt(ParsedContainer parsed, List<Integer> indices, String opLabel) {
         List<String> blocked = new ArrayList<>();
         for (int idx : indices) {

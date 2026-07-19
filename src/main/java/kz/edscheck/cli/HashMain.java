@@ -19,7 +19,7 @@ import kz.edscheck.msg.MsgKey;
 import kz.edscheck.trust.Digests;
 import kz.edscheck.trust.KalkanJar;
 import kz.edscheck.trust.KalkanJarException;
-
+import kz.edscheck.trust.KalkanProviderRegistrar;
 
 public final class HashMain {
     private record Algo(String jceName, String label, String oid) {
@@ -40,7 +40,6 @@ public final class HashMain {
 
     private static final String DEFAULT_ALGO = "gost2015";
 
-    
     private static String usage() {
         return Messages.resource("/kz/edscheck/msg/usage/hash_" + Messages.locale().getLanguage() + ".txt")
             .replace("{{algo_list}}", String.join("|", ALGOS.keySet()))
@@ -99,8 +98,7 @@ public final class HashMain {
                 i++;
             }
         }
-        
-        
+
         Messages.setLocale(Locale.of(lang));
 
         if (help) {
@@ -125,7 +123,7 @@ public final class HashMain {
         MessageDigest md;
         try {
             libLabel = Messages.get(MsgKey.HASH_LIB_LABEL, KalkanJar.resolveAndVerify());
-            KalkanJar.ensureSecurityProviderRegistered();
+            KalkanProviderRegistrar.ensureSecurityProviderRegistered();
             md = MessageDigest.getInstance(algo.jceName(), "KALKAN");
         } catch (KalkanJarException e) {
             System.err.println(Messages.get(MsgKey.CLI_ERROR, e.getMessage()));
@@ -145,8 +143,7 @@ public final class HashMain {
             byte[] digest;
             try {
                 if ("-".equals(cliName)) {
-                    
-                    
+
                     size = Digests.update(System.in, md);
                 } else {
                     try (InputStream in = Files.newInputStream(Paths.get(cliName))) {
@@ -162,7 +159,7 @@ public final class HashMain {
             }
 
             if (quiet) {
-                
+
                 System.out.println(hex(digest) + "  " + cliName);
             } else {
                 blocks.add(render(displayName, size, algo, libLabel, digest));

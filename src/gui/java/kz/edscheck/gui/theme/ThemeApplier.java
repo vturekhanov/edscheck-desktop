@@ -10,11 +10,9 @@ import com.formdev.flatlaf.themes.FlatMacDarkLaf;
 import com.formdev.flatlaf.themes.FlatMacLightLaf;
 import com.formdev.flatlaf.util.SystemInfo;
 
-
 public final class ThemeApplier {
     private static final float FONT_SIZE_DELTA = 2f;
 
-    
     private static Float baseFontSize;
 
     private ThemeApplier() {

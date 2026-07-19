@@ -13,7 +13,6 @@ import kz.gov.pki.kalkan.asn1.cms.SignedData;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
-
 public final class StripSignature {
     private StripSignature() {
     }
@@ -37,8 +36,7 @@ public final class StripSignature {
                 vec.add(signerInfos.getObjectAt(i));
             }
         }
-        
-        
+
         ASN1Set newSignerInfos = new BERSet(vec);
         SignedData newSignedData = new SignedData(
             signedData.getDigestAlgorithms(), signedData.getEncapContentInfo(),

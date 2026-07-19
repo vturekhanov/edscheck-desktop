@@ -2,7 +2,6 @@ package kz.edscheck.provider;
 
 import java.time.Instant;
 
-
 public record TimestampInfo(
         boolean present,
         Boolean valid,

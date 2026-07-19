@@ -74,9 +74,8 @@ import kz.edscheck.provider.VerificationProvider;
 import kz.edscheck.trace.Trace;
 import kz.edscheck.trust.Authorities;
 import kz.edscheck.trust.DigestAlgorithms;
-import kz.edscheck.trust.KalkanJar;
+import kz.edscheck.trust.KalkanProviderRegistrar;
 import kz.edscheck.trust.ManifestTrust;
-
 
 public final class KalkanProvider implements VerificationProvider {
     private static final String PROV = "KALKAN";
@@ -90,7 +89,7 @@ public final class KalkanProvider implements VerificationProvider {
     private static final String OID_OCSP_SIGNING = "1.3.6.1.5.5.7.3.9";
 
     static {
-        KalkanJar.ensureSecurityProviderRegistered();
+        KalkanProviderRegistrar.ensureSecurityProviderRegistered();
     }
 
     private final Trace trace;
@@ -133,11 +132,6 @@ public final class KalkanProvider implements VerificationProvider {
         return out;
     }
 
-    
-    
-    
-
-    
     @Override
     public ProviderResult verifyStreaming(VerificationRequest request, DocumentSource container) {
         List<X509Certificate> trust = ManifestTrust.loadCertificates(request.trust().roots());
@@ -146,21 +140,15 @@ public final class KalkanProvider implements VerificationProvider {
     }
 
     private ProviderResult verifyOne(VerificationRequest request, byte[] container, DocumentSource document) {
-        
-        
-        
-        
+
         List<X509Certificate> trust = ManifestTrust.loadCertificates(request.trust().roots());
         ParsedContainer parsed = Parsing.parseContainer(container, trust, document);
         return processParsed(request, trust, parsed);
     }
 
-    
     private ProviderResult processParsed(
             VerificationRequest request, List<X509Certificate> trust, ParsedContainer parsed) {
-        
-        
-        
+
         if (parsed.signers().stream().anyMatch(ParsedSigner::isForeign)) {
             List<SignerVerification> foreignSigners = new ArrayList<>();
             for (ParsedSigner ps : parsed.signers()) {
@@ -191,16 +179,7 @@ public final class KalkanProvider implements VerificationProvider {
                 anchorTrace = Messages.get(MsgKey.PROVIDER_TRACE_ANCHOR_NOT_BOUND, anchor.detail());
             }
             trace.v(label(ps) + ": " + anchorTrace);
-            
-            
-            
-            
-            
-            
-            
-            
-            
-            
+
             String uc;
             if (anchor.caCert() != null) {
                 uc = Authorities.detect(anchor.caCert());
@@ -245,32 +224,16 @@ public final class KalkanProvider implements VerificationProvider {
             }
             Instant refTime = ps.hasTimestamp() && ps.tstGenTime() != null
                 ? ps.tstGenTime() : Instant.now();
-            
-            
-            
-            
+
             TimestampInfo timestamp = ps.hasTimestamp()
                 ? timestampInfo(ps, containerCerts, trust, refTime, ignoreTruststore)
                 : TimestampInfo.absent();
-            
-            
-            
-            
-            
+
             StageOutcome revocation = revocationOutcome(
                 ps, ps.signerCertRaw(), containerCerts, trust, refTime, crlPath, ignoreTruststore);
-            
-            
-            
-            
-            
-            
+
             StageOutcome integrity = integrityOutcome(ps, ps.signerCertRaw());
-            
-            
-            
-            
-            
+
             StageOutcome archive = ps.archiveMarks().isEmpty()
                 ? null
                 : archiveOutcome(ps, containerCerts, trust, ignoreTruststore);
@@ -288,7 +251,6 @@ public final class KalkanProvider implements VerificationProvider {
         return new ProviderResult(parsed.encoding(), signers, containerUc);
     }
 
-    
     private SignerVerification notAnchoredSigner(
             ParsedSigner ps, TimestampInfo timestamp, StageOutcome revocation, StageOutcome integrity,
             StageOutcome archive, String authority) {
@@ -306,7 +268,6 @@ public final class KalkanProvider implements VerificationProvider {
             ps.archive(), outcomes, ps.chain(), List.of(), ps.missingBbAttrs(), authority);
     }
 
-    
     private SignerVerification signerAnchored(
             ParsedSigner ps, X509Certificate signerCert, List<X509Certificate> containerCerts,
             List<X509Certificate> trust, Instant refTime, boolean ignoreTruststore, String crlPath,
@@ -329,7 +290,6 @@ public final class KalkanProvider implements VerificationProvider {
             ps.archive(), outcomes, ps.chain(), List.of(), ps.missingBbAttrs(), authority);
     }
 
-    
     private void traceMissingBbAttrs(ParsedSigner ps) {
         if (ps.missingBbAttrs().isEmpty()) {
             trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_BB_ATTRS_OK));
@@ -339,7 +299,6 @@ public final class KalkanProvider implements VerificationProvider {
             String.join(", ", ps.missingBbAttrs())));
     }
 
-    
     private StageOutcome integrityOutcome(ParsedSigner ps, X509Certificate signerCert) {
         try {
             boolean ok = ps.signerInfo().verify(signerCert.getPublicKey(), PROV);
@@ -349,20 +308,12 @@ public final class KalkanProvider implements VerificationProvider {
             return ok ? new StageOutcome(CheckStatus.PASS)
                       : new StageOutcome(CheckStatus.FAIL, Messages.get(MsgKey.PROVIDER_INTEGRITY_MISMATCH));
         } catch (Exception e) {
-            
-            
-            
-            
-            
+
             trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_INTEGRITY_ERROR,
                 e.getClass().getSimpleName() + ": " + e.getMessage()));
             return new StageOutcome(CheckStatus.FAIL, e.getClass().getSimpleName() + ": " + e.getMessage());
         }
     }
-
-    
-    
-    
 
     private StageOutcome chainOutcome(
             ParsedSigner ps, X509Certificate signerCert, List<X509Certificate> containerCerts,
@@ -400,10 +351,6 @@ public final class KalkanProvider implements VerificationProvider {
             return new StageOutcome(CheckStatus.FAIL, rootMessage(e));
         }
     }
-
-    
-    
-    
 
     private TimestampInfo timestampInfo(
             ParsedSigner ps, List<X509Certificate> containerCerts, List<X509Certificate> trust,
@@ -461,10 +408,6 @@ public final class KalkanProvider implements VerificationProvider {
                 ? Messages.get(MsgKey.PROVIDER_TRACE_TSA_CHAIN_OK)
                 : Messages.get(MsgKey.PROVIDER_TRACE_TSA_CHAIN_FAIL, chainDetail)));
 
-            
-            
-            
-            
             AttributeTable tstUt = tstSi.getUnsignedAttributes();
             Attribute revAttr = tstUt == null ? null : tstUt.get(OID_REVVALUES);
             if (revAttr != null) {
@@ -498,11 +441,7 @@ public final class KalkanProvider implements VerificationProvider {
             detail = Messages.get(MsgKey.PROVIDER_TIMESTAMP_CERT_EXPIRED);
         }
         if (detail == null && Boolean.FALSE.equals(tsaOcspOk)) {
-            
-            
-            
-            
-            
+
             detail = Messages.get(MsgKey.PROVIDER_TIMESTAMP_TSA_OCSP_PREFIX, tsaOcspDetail);
         }
 
@@ -513,7 +452,6 @@ public final class KalkanProvider implements VerificationProvider {
         return new TimestampInfo(true, valid, ps.tstGenTime(), detail, ps.tsaTimestampingEkuOk(), tsaOcspOutcome);
     }
 
-    
     private static Boolean tsaCertInValidity(ParsedSigner ps) {
         if (ps.tsaCertRaw() == null || ps.tstGenTime() == null) {
             return null;
@@ -523,10 +461,6 @@ public final class KalkanProvider implements VerificationProvider {
         Instant ref = ps.tstGenTime();
         return !ref.isBefore(notBefore) && !ref.isAfter(notAfter);
     }
-
-    
-    
-    
 
     private StageOutcome revocationOutcome(
             ParsedSigner ps, X509Certificate signerCert, List<X509Certificate> containerCerts,
@@ -545,7 +479,6 @@ public final class KalkanProvider implements VerificationProvider {
             revAttr, signerCert, trust, containerCerts, refTime, ignoreTruststore, label(ps));
     }
 
-    
     private StageOutcome revocationOcspOutcome(
             Attribute revValues, X509Certificate signerCert, List<X509Certificate> trust,
             List<X509Certificate> containerCerts, Instant refTime, boolean ignoreTruststore, String label) {
@@ -579,10 +512,7 @@ public final class KalkanProvider implements VerificationProvider {
             } catch (Exception e) {
                 trace.v(label + ": " + Messages.get(MsgKey.PROVIDER_TRACE_OCSP_RESPONDER_CHAIN_FAILED,
                     rootMessage(e)));
-                
-                
-                
-                
+
                 return revFail(Messages.get(MsgKey.PROVIDER_REVOCATION_OCSP_CHAIN_PREFIX, rootMessage(e)));
             }
             trace.v(label + ": " + Messages.get(MsgKey.PROVIDER_TRACE_OCSP_RESPONDER_AUTHORIZED,
@@ -605,7 +535,7 @@ public final class KalkanProvider implements VerificationProvider {
                         break;
                     }
                 } catch (Exception ignored) {
-                    
+
                 }
             }
             if (match == null) {
@@ -693,7 +623,7 @@ public final class KalkanProvider implements VerificationProvider {
     }
 
     private static BasicOCSPResp extractBasicOcsp(Attribute revValues) throws Exception {
-        
+
         ASN1Sequence rv = ASN1Sequence.getInstance(revValues.getAttrValues().getObjectAt(0));
         for (int i = 0; i < rv.size(); i++) {
             DEREncodable e = rv.getObjectAt(i);
@@ -707,10 +637,6 @@ public final class KalkanProvider implements VerificationProvider {
         }
         return null;
     }
-
-    
-    
-    
 
     private StageOutcome archiveOutcome(
             ParsedSigner ps, List<X509Certificate> containerCerts, List<X509Certificate> trust,
@@ -750,8 +676,7 @@ public final class KalkanProvider implements VerificationProvider {
                 byte[] imprint = digestOne(mark.imprintBlob, mark.imprintAlgOid);
                 hashFailure = ArchiveTs.evaluateHashes(mark, certHashes, crlHashes, attrHashes, imprint);
             }
-            
-            
+
             String failure = ArchiveTs.markFailure(
                 mark, sigOk, chainOk, chainOk, ArchiveTs.markTsaCertInValidity(mark), hashFailure);
             trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_ARCHIVE_MARK,
@@ -797,11 +722,6 @@ public final class KalkanProvider implements VerificationProvider {
         }
     }
 
-    
-    
-    
-
-    
     private record AnchorInfo(
             boolean anchored, X509Certificate caCert, String detail, X500Principal signerIssuerName) {
     }
@@ -820,11 +740,6 @@ public final class KalkanProvider implements VerificationProvider {
             containerBySubject.putIfAbsent(c.getSubjectX500Principal(), c);
         }
 
-        
-        
-        
-        
-        
         X500Principal signerIssuerName = signerCert.getIssuerX500Principal();
 
         X509Certificate current = signerCert;
@@ -873,7 +788,6 @@ public final class KalkanProvider implements VerificationProvider {
         }
     }
 
-    
     private static void buildPath(
             X509Certificate target, List<X509Certificate> containerCerts,
             List<X509Certificate> trust, Instant refTime, boolean ignoreTruststore) throws Exception {
@@ -891,13 +805,7 @@ public final class KalkanProvider implements VerificationProvider {
                 }
             }
             if (anchors.isEmpty()) {
-                
-                
-                
-                
-                
-                
-                
+
                 throw new Exception(Messages.get(MsgKey.PROVIDER_CHAIN_NOT_ANCHORED));
             }
         } else {
@@ -955,11 +863,6 @@ public final class KalkanProvider implements VerificationProvider {
         return cert.getBasicConstraints() >= 0;
     }
 
-    
-    
-    
-
-    
     private static String label(ParsedSigner ps) {
         return Messages.get(MsgKey.PROVIDER_LABEL_SIGNATURE, ps.index() + 1);
     }
@@ -967,7 +870,6 @@ public final class KalkanProvider implements VerificationProvider {
     private static final DateTimeFormatter TRACE_DT_FMT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx", Locale.ROOT);
 
-    
     private static String traceDt(Instant value) {
         return value == null ? "null" : value.atZone(ZoneId.systemDefault()).format(TRACE_DT_FMT);
     }
@@ -1006,8 +908,6 @@ public final class KalkanProvider implements VerificationProvider {
         return d == null ? null : d.toInstant();
     }
 
-    
-    
     private static String reasonLabel(int code) {
         switch (code) {
             case 0: return "unspecified";

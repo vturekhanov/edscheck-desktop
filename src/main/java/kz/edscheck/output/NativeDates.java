@@ -10,7 +10,6 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
 public final class NativeDates {
     private static final Pattern NATIVE_DT_RE =
         Pattern.compile("(\\d{14})GMT([+-])(\\d{2}):?(\\d{2})");

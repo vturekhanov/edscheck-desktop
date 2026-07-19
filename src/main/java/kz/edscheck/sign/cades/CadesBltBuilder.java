@@ -24,27 +24,18 @@ import kz.edscheck.parsing.ParsedSigner;
 import kz.edscheck.parsing.Parsing;
 import kz.edscheck.trust.DigestAlgorithms;
 
-
 public final class CadesBltBuilder {
-    
-    
-    
-    
-    
-    
+
     public static final String OCSP_URL = "http://ocsp.pki.gov.kz/";
-    
-    
+
     public static final String TSA_URL = "http://tsp.pki.gov.kz/";
-    
-    
+
     public static final String TSA_REQ_POLICY = "1.2.398.3.3.2.6.4";
     private static final Duration TIMEOUT = Duration.ofSeconds(15);
 
     private CadesBltBuilder() {
     }
 
-    
     public static X509Certificate resolveIssuer(X509Certificate subject) {
         X509Certificate issuer = Online.loadIssuerCert(subject);
         if (issuer == null) {
@@ -54,12 +45,10 @@ public final class CadesBltBuilder {
         return issuer;
     }
 
-    
     public static byte[] augmentWithOcspAndTsa(byte[] bareCms) {
         return augmentWithOcspAndTsa(bareCms, 0);
     }
 
-    
     public static byte[] augmentWithOcspAndTsa(byte[] bareCms, int index) {
         ParsedContainer parsed = Parsing.parseContainer(bareCms, List.of());
         if (index < 0 || index >= parsed.signers().size()) {
@@ -94,7 +83,6 @@ public final class CadesBltBuilder {
         return rebuildAtIndex(bareCms, index, si);
     }
 
-    
     static TimeStampToken requestTsaForSignature(SignerInformation si, String tsaUrl, String reqPolicy) {
         String digestOid = si.getDigestAlgOID();
         String jceName = DigestAlgorithms.jceName(digestOid);
@@ -118,12 +106,10 @@ public final class CadesBltBuilder {
         }
     }
 
-    
     static byte[] rebuildAtIndex(byte[] cmsDer, int index, SignerInformation updatedSi) {
         return rebuildAtIndices(cmsDer, Map.of(index, updatedSi));
     }
 
-    
     static byte[] rebuildAtIndices(byte[] cmsDer, Map<Integer, SignerInformation> updates) {
         Object asn1;
         try {

@@ -22,7 +22,6 @@ import kz.edscheck.provider.TimestampInfo;
 import kz.edscheck.provider.VerificationProvider;
 import kz.edscheck.trust.ManifestTrust;
 
-
 public final class FakeProvider implements VerificationProvider {
     private static final Set<Stage> CAPABILITIES = Set.of(
         Stage.INTEGRITY, Stage.TIMESTAMP, Stage.CHAIN, Stage.REVOCATION, Stage.ARCHIVE_TIMESTAMP);
@@ -80,8 +79,7 @@ public final class FakeProvider implements VerificationProvider {
             .validFrom(scenario.revocationValidFrom)
             .validUntil(scenario.revocationValidUntil)
             .build());
-        
-        
+
         if (ps.archive().count() > 0) {
             CheckStatus status = scenario.archiveStatus != null ? scenario.archiveStatus : CheckStatus.PASS;
             outcomes.put(Stage.ARCHIVE_TIMESTAMP, new StageOutcome(status, scenario.archiveDetail));
@@ -99,8 +97,7 @@ public final class FakeProvider implements VerificationProvider {
         boolean valid = scenario.timestampValid == null || scenario.timestampValid;
         Instant genTime = ps.tstGenTime() != null ? ps.tstGenTime() : ps.signingTime();
         Boolean tsaEku = scenario.tsaKeyUsageOk != null ? scenario.tsaKeyUsageOk : ps.tsaTimestampingEkuOk();
-        
-        
+
         return new TimestampInfo(true, valid, genTime, scenario.timestampDetail, tsaEku, null);
     }
 }

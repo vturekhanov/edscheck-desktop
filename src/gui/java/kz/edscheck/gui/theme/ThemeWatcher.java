@@ -6,9 +6,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-
 public final class ThemeWatcher {
-    
+
     public static final long DEFAULT_POLL_INTERVAL_SECONDS = 3;
 
     private final Supplier<OsTheme> detector;
@@ -29,7 +28,6 @@ public final class ThemeWatcher {
         this.pollIntervalSeconds = pollIntervalSeconds;
     }
 
-    
     public synchronized void start() {
         if (executor != null) {
             return;
@@ -50,7 +48,6 @@ public final class ThemeWatcher {
         }
     }
 
-    
     void pollOnce() {
         OsTheme current = detector.get();
         if (current != last) {

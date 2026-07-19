@@ -4,7 +4,6 @@ import java.time.Instant;
 import kz.edscheck.domain.CheckStatus;
 import kz.edscheck.domain.RevocationSource;
 
-
 public final class StageOutcome {
     private final CheckStatus status;
     private final String detail;
@@ -68,7 +67,6 @@ public final class StageOutcome {
         return revokedReason;
     }
 
-    
     public static final class Builder {
         private final CheckStatus status;
         private String detail;

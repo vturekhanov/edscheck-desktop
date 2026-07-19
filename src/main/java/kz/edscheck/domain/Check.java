@@ -2,7 +2,6 @@ package kz.edscheck.domain;
 
 import java.time.Instant;
 
-
 public final class Check {
     private final Stage stage;
     private final CheckStatus status;
@@ -30,7 +29,6 @@ public final class Check {
         this(stage, status, detail, time, source, crlUrl, revokedAt, revokedReason, validFrom, false);
     }
 
-    
     public Check(
             Stage stage, CheckStatus status, String detail, Instant time,
             RevocationSource source, String crlUrl, Instant revokedAt,
@@ -87,19 +85,16 @@ public final class Check {
         return online;
     }
 
-    
     public Check withValidFrom(Instant newValidFrom) {
         return new Check(stage, status, detail, time, source, crlUrl,
             revokedAt, revokedReason, newValidFrom, online);
     }
 
-    
     public Check withRevokedAt(Instant newRevokedAt, String newRevokedReason) {
         return new Check(stage, status, detail, time, source, crlUrl,
             newRevokedAt, newRevokedReason, validFrom, online);
     }
 
-    
     public Check withOnline(boolean newOnline) {
         return new Check(stage, status, detail, time, source, crlUrl,
             revokedAt, revokedReason, validFrom, newOnline);

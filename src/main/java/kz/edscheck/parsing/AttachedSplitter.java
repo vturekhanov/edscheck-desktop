@@ -20,19 +20,15 @@ import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.trust.DigestAlgorithms;
 
-
 final class AttachedSplitter {
     private static final String PROV = "KALKAN";
     private static final int STREAM_BUFFER = 1 << 16;
-    
-    
-    
+
     private static final long MAX_SMALL_FIELD_BYTES = 64L * 1024 * 1024;
 
     private AttachedSplitter() {
     }
 
-    
     static final class SplitFailedException extends RuntimeException {
         SplitFailedException(String message) {
             super(message);
@@ -43,21 +39,15 @@ final class AttachedSplitter {
         }
     }
 
-    
     record Split(byte[] skeleton, Map<String, byte[]> digestsByOid) {
     }
 
-    
     static Split trySplit(DocumentSource container) throws IOException {
         try (InputStream raw = container.open()) {
             Counting in = new Counting(raw);
             return split(in);
         }
     }
-
-    
-    
-    
 
     private static Split split(Counting in) throws IOException {
         Tlv outer = readTagLen(in);
@@ -98,15 +88,11 @@ final class AttachedSplitter {
         requireTag(eContentTypeTlv, 0x06, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_ECONTENT_TYPE));
         byte[] eContentTypeFull = materializeFullTlv(in, eContentTypeTlv);
 
-        
-        
-        
         Tlv eContentWrapper;
         if (encapTlv.indefinite) {
             eContentWrapper = readTlvOrEoc(in);
             if (eContentWrapper == null) {
-                
-                
+
                 throw new SplitFailedException(Messages.get(MsgKey.ATTACHED_SPLITTER_ECONTENT_ABSENT));
             }
         } else {
@@ -124,16 +110,11 @@ final class AttachedSplitter {
         streamOctetStringIntoDigests(in, octetTlv, mdByOid.values());
         closeIfIndefinite(in, eContentWrapper);
         closeIfIndefinite(in, encapTlv);
-        
-        
-        
-        
+
         if (!encapTlv.indefinite && in.count() != encapLimit) {
             throw new SplitFailedException(Messages.get(MsgKey.ATTACHED_SPLITTER_ENCAP_LENGTH_MISMATCH));
         }
 
-        
-        
         byte[] tail;
         if (!signedDataTlv.indefinite) {
             long remaining = signedDataLimit - in.count();
@@ -169,7 +150,6 @@ final class AttachedSplitter {
         return new Split(skeleton, digestsByOid);
     }
 
-    
     private static byte[] buildSkeleton(
             byte[] oidFull, byte[] versionFull, byte[] digestAlgsFull,
             byte[] eContentTypeFull, byte[] tail) throws IOException {
@@ -199,11 +179,6 @@ final class AttachedSplitter {
         return out.toByteArray();
     }
 
-    
-    
-    
-    
-
     private static Map<String, MessageDigest> digestsFromDeclaredAlgorithms(byte[] digestAlgsFullTlv) {
         ASN1Set set = readAsn1(digestAlgsFullTlv, ASN1Set.class);
         Map<String, MessageDigest> mdByOid = new LinkedHashMap<>();
@@ -225,7 +200,7 @@ final class AttachedSplitter {
             try {
                 mdByOid.put(oid, MessageDigest.getInstance(jceName, PROV));
             } catch (Exception e) {
-                
+
             }
         }
         return mdByOid;
@@ -247,10 +222,6 @@ final class AttachedSplitter {
                 Messages.get(MsgKey.ATTACHED_SPLITTER_FIELD_PARSE_FAILED, e.getMessage()), e);
         }
     }
-
-    
-    
-    
 
     private static void streamOctetStringIntoDigests(
             Counting in, Tlv tlv, Iterable<MessageDigest> digests) throws IOException {
@@ -295,15 +266,9 @@ final class AttachedSplitter {
         }
     }
 
-    
-    
-    
-    
-
     private record Tlv(int tagByte, boolean constructed, long length, boolean indefinite) {
     }
 
-    
     private static final class Counting extends FilterInputStream {
         private long count;
 
@@ -376,7 +341,6 @@ final class AttachedSplitter {
         return readTagLenFrom(in, readByte(in));
     }
 
-    
     private static Tlv readTlvOrEoc(InputStream in) throws IOException {
         int first = readByte(in);
         if (first == 0x00) {

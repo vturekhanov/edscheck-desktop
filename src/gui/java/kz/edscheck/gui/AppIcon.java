@@ -7,7 +7,6 @@ import java.net.URL;
 
 import javax.imageio.ImageIO;
 
-
 final class AppIcon {
     private AppIcon() {
     }

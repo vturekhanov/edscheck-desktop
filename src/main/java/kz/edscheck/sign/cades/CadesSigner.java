@@ -31,8 +31,7 @@ import kz.gov.pki.kalkan.jce.provider.cms.CMSSignedData;
 import kz.gov.pki.kalkan.jce.provider.cms.CMSSignedDataGenerator;
 import kz.gov.pki.kalkan.jce.provider.cms.CMSSignedGenerator;
 
-import kz.edscheck.trust.KalkanJar;
-
+import kz.edscheck.trust.KalkanProviderRegistrar;
 
 public final class CadesSigner {
     private static final String OID_SIGNING_CERTIFICATE_V2 = "1.2.840.113549.1.9.16.2.47";
@@ -42,14 +41,12 @@ public final class CadesSigner {
     private CadesSigner() {
     }
 
-    
     public static X509Certificate loadSignerCertificate(String p12Path, char[] password) throws Exception {
         KeyStore ks = openP12(p12Path, password);
         String alias = ks.aliases().nextElement();
         return (X509Certificate) ks.getCertificate(alias);
     }
 
-    
     public static byte[] sign(String p12Path, char[] password, byte[] content, boolean encapsulate,
                                List<X509Certificate> chainCerts) throws Exception {
         KeyStore ks = openP12(p12Path, password);
@@ -77,7 +74,7 @@ public final class CadesSigner {
     }
 
     private static KeyStore openP12(String p12Path, char[] password) throws Exception {
-        KalkanJar.ensureSecurityProviderRegistered();
+        KalkanProviderRegistrar.ensureSecurityProviderRegistered();
         KeyStore ks = KeyStore.getInstance("PKCS12", PROV);
         try (InputStream in = new FileInputStream(p12Path)) {
             ks.load(in, password);
@@ -85,7 +82,6 @@ public final class CadesSigner {
         return ks;
     }
 
-    
     private static final class EssSignedAttrGen implements CMSAttributeTableGenerator {
         private final byte[] certHash;
 

@@ -15,7 +15,6 @@ import kz.edscheck.domain.Stage;
 import kz.edscheck.domain.VerificationRequest;
 import kz.edscheck.Version;
 
-
 public final class JsonRenderer {
     private JsonRenderer() {
     }
@@ -34,13 +33,6 @@ public final class JsonRenderer {
             input.put("document", container.documentName());
         }
 
-        
-        
-        
-        
-        
-        
-        
         boolean mixed = isMixedAuthority(container);
         Object caField = mixed ? null : (container.authority() != null ? container.authority() : request.ca());
 
@@ -59,7 +51,6 @@ public final class JsonRenderer {
         return payload;
     }
 
-    
     private static boolean isMixedAuthority(SignedContainer container) {
         long distinct = container.signatures().stream()
             .map(Signature::authority)
@@ -77,10 +68,7 @@ public final class JsonRenderer {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("index", sig.index());
         out.put("verdict", sig.verdict().jsonValue());
-        
-        
-        
-        
+
         if (mixed) {
             out.put("ca", sig.authority());
         }
@@ -142,7 +130,6 @@ public final class JsonRenderer {
         return out;
     }
 
-    
     private static String iso(Instant value) {
         if (value == null) {
             return null;

@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-
 public final class OsThemeDetector {
     private static final int TIMEOUT_SECONDS = 2;
 
@@ -31,13 +30,11 @@ public final class OsThemeDetector {
         return OsTheme.LIGHT;
     }
 
-    
     private static OsTheme detectMac() throws Exception {
         String out = run("defaults", "read", "-g", "AppleInterfaceStyle");
         return out != null && out.strip().equalsIgnoreCase("Dark") ? OsTheme.DARK : OsTheme.LIGHT;
     }
 
-    
     private static OsTheme detectLinuxGnome() throws Exception {
         String colorScheme = run("gsettings", "get", "org.gnome.desktop.interface", "color-scheme");
         if (colorScheme != null && colorScheme.toLowerCase(Locale.ROOT).contains("dark")) {
@@ -50,7 +47,6 @@ public final class OsThemeDetector {
         return OsTheme.LIGHT;
     }
 
-    
     private static OsTheme detectWindows() throws Exception {
         String out = run("reg", "query",
             "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
@@ -58,7 +54,6 @@ public final class OsThemeDetector {
         return out != null && out.contains("0x0") ? OsTheme.DARK : OsTheme.LIGHT;
     }
 
-    
     private static String run(String... command) throws Exception {
         Process proc = new ProcessBuilder(command).redirectErrorStream(true).start();
         boolean finished = proc.waitFor(TIMEOUT_SECONDS, TimeUnit.SECONDS);

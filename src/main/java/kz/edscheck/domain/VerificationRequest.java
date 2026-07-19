@@ -2,7 +2,6 @@ package kz.edscheck.domain;
 
 import java.util.Map;
 
-
 public record VerificationRequest(
         String containerPath,
         String ca,

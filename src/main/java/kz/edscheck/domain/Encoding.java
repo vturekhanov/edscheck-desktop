@@ -1,6 +1,5 @@
 package kz.edscheck.domain;
 
-
 public enum Encoding {
     DER,
     BASE64;

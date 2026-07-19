@@ -27,7 +27,6 @@ import kz.edscheck.provider.VerificationProvider;
 import kz.edscheck.rules.PolicyProfile;
 import kz.edscheck.rules.Rules;
 
-
 public final class VerificationEngine {
     private final VerificationProvider provider;
     private final PolicyProfile policy;
@@ -42,14 +41,13 @@ public final class VerificationEngine {
     }
 
     public SignedContainer verify(VerificationRequest request, byte[] container) {
-        
+
         if (Ddcard.detectInputFormat(container).equals("ddcard")) {
             return verifyDdcard(request, container);
         }
         return verifyCms(request, container);
     }
 
-    
     public SignedContainer verify(VerificationRequest request, DocumentSource container) {
         boolean ddcard;
         try {
@@ -72,8 +70,6 @@ public final class VerificationEngine {
         return assembleCmsResult(request, result);
     }
 
-    
-
     private SignedContainer verifyCms(VerificationRequest request, byte[] container) {
         ProviderResult result = provider.verify(request, container);
         return assembleCmsResult(request, result);
@@ -92,27 +88,22 @@ public final class VerificationEngine {
 
     private SignedContainer verifyDdcard(VerificationRequest request, byte[] container) {
         DdcardContent content = Ddcard.parseDdcard(container);
-        
-        
-        
+
         return verifyDetached(request, content.document(), content.signatures(),
             content.documentName(), "ddcard");
     }
 
-    
     public SignedContainer verifyDetached(
             VerificationRequest request, byte[] document, List<byte[]> signatures) {
         return verifyDetached(request, DocumentSource.ofBytes(document), signatures, null, "detached");
     }
 
-    
     public SignedContainer verifyDetached(
             VerificationRequest request, byte[] document, List<byte[]> signatures,
             String documentName) {
         return verifyDetached(request, DocumentSource.ofBytes(document), signatures, documentName, "detached");
     }
 
-    
     public SignedContainer verifyDetached(
             VerificationRequest request, DocumentSource document, List<byte[]> signatures,
             String documentName) {
@@ -162,39 +153,29 @@ public final class VerificationEngine {
             assembled.size(), assembled, containerFormat, documentName, authority);
     }
 
-    
-
     private Signature assembleSignature(SignerVerification sv, Set<Stage> capabilities) {
         kz.edscheck.domain.ReferenceTime referenceTime = Rules.computeReferenceTime(sv.timestamp(), policy);
         Rules.CheckAndWarnings tsResult = Rules.timestampCheck(sv.timestamp(), policy);
         Check tsCheck = tsResult.check();
-        
-        
+
         Rules.CheckAndWarnings signedAttrsResult = Rules.signedAttrsCheck(sv.missingBbAttrs(), policy);
         Check signedAttrsCheck = signedAttrsResult.check();
         List<String> warnings = new ArrayList<>(tsResult.warnings());
         warnings.addAll(signedAttrsResult.warnings());
         warnings.addAll(sv.warnings()); 
 
-        
         StageOutcome revocationOutcome = sv.outcomes().get(Stage.REVOCATION);
         Check revocation = cryptoCheck(Stage.REVOCATION, sv, capabilities);
         revocation = Rules.applyRevocationDate(revocation, revocationOutcome).check();
 
-        
-        
         revocation = Rules.applyRevocationPeriod(
             revocation, revocationOutcome, referenceTime.value(), Instant.now(), policy);
 
-        
-        
         if (referenceTime.source() == TimeSource.TIMESTAMP) {
             revocation = Rules.applyOcspSigningWindow(
                 revocation, revocationOutcome, referenceTime.value(), policy);
         }
 
-        
-        
         Rules.CheckAndWarnings archiveResult = Rules.archiveTimestampCheck(
             sv.archive(), sv.outcomes().get(Stage.ARCHIVE_TIMESTAMP));
         Check archiveCheck = archiveResult.check();
@@ -216,7 +197,6 @@ public final class VerificationEngine {
             referenceTime, checks, allWarnings, sv.authority());
     }
 
-    
     private Check cryptoCheck(Stage stage, SignerVerification sv, Set<Stage> capabilities) {
         StageOutcome outcome = sv.outcomes().get(stage);
         if (outcome != null) {

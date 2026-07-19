@@ -7,7 +7,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 
-
 public final class GuiMessages {
     public static final Locale DEFAULT_LOCALE = Locale.of("ru");
     public static final List<String> SUPPORTED_LOCALES = List.of("ru");
@@ -33,8 +32,7 @@ public final class GuiMessages {
 
     public static String get(GuiMsgKey key, Object... args) {
         if (args.length != key.argCount()) {
-            
-            
+
             throw new IllegalArgumentException(
                 get(GuiMsgKey.MESSAGES_ARG_COUNT_MISMATCH, key, key.argCount(), args.length));
         }

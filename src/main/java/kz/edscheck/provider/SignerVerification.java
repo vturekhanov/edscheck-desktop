@@ -6,7 +6,6 @@ import java.util.Map;
 import kz.edscheck.domain.Certificate;
 import kz.edscheck.domain.Stage;
 
-
 public final class SignerVerification {
     private int index;
     private final Certificate certificate;
@@ -16,9 +15,9 @@ public final class SignerVerification {
     private final Map<Stage, StageOutcome> outcomes;
     private final List<Certificate> chain;
     private final List<String> warnings;
-    
+
     private final List<String> missingBbAttrs;
-    
+
     private final String authority;
 
     public SignerVerification(
