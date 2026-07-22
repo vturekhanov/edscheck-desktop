@@ -1,2 +1,0 @@
-
-package kz.edscheck.online;

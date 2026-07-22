@@ -13,6 +13,7 @@ import javax.swing.SwingUtilities;
 
 import com.formdev.flatlaf.FlatLaf;
 
+import kz.edscheck.Version;
 import kz.edscheck.gui.kalkan.KalkanFirstRunDialog;
 import kz.edscheck.gui.kalkan.KalkanResolver;
 import kz.edscheck.gui.msg.GuiMessages;
@@ -38,7 +39,7 @@ public final class GuiMain {
         try {
             LibraryJars.verifyRuntime(LibraryJars.resolveDirFromSystemProperty());
         } catch (LibraryJarException e) {
-            System.err.println(Messages.get(MsgKey.CLI_ERROR, e.getMessage()));
+            System.err.println(Messages.get(MsgKey.ERROR, e.getMessage()));
             System.exit(2);
         }
 
@@ -69,7 +70,7 @@ public final class GuiMain {
         KalkanResolver.Resolution resolution =
             KalkanResolver.resolve(instrumentation, KalkanResolver.defaultCandidates());
         if (resolution instanceof KalkanResolver.Resolution.AgentUnavailable) {
-            System.err.println(Messages.get(MsgKey.CLI_ERROR, GuiMessages.get(GuiMsgKey.KALKAN_AGENT_UNAVAILABLE)));
+            System.err.println(Messages.get(MsgKey.ERROR, GuiMessages.get(GuiMsgKey.KALKAN_AGENT_UNAVAILABLE)));
             System.exit(2);
             return;
         }
@@ -101,7 +102,7 @@ public final class GuiMain {
             Window owner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
             JOptionPane.showMessageDialog(
                 owner,
-                GuiMessages.get(GuiMsgKey.ABOUT_MESSAGE, GuiVersion.VALUE),
+                GuiMessages.get(GuiMsgKey.ABOUT_MESSAGE, GuiVersion.VALUE, Version.VALUE),
                 GuiMessages.get(GuiMsgKey.WINDOW_TITLE),
                 JOptionPane.INFORMATION_MESSAGE);
         });

@@ -50,7 +50,7 @@ import kz.edscheck.gui.msg.GuiMessages;
 import kz.edscheck.gui.msg.GuiMsgKey;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
-import kz.edscheck.sign.cades.CoSign;
+import kz.edscheck.parsing.ContainerFormat;
 import kz.edscheck.trace.Trace;
 import kz.edscheck.trust.KalkanJarException;
 import kz.edscheck.trust.LibraryJarException;
@@ -233,7 +233,7 @@ public final class MainPanel extends JPanel {
 
     private static boolean isDetachedCades(byte[] bytes) {
         return bytes.length > 0 && bytes[0] == 0x30
-            && CoSign.looksLikeCades(bytes) && !CoSign.isAttached(bytes);
+            && ContainerFormat.looksLikeCades(bytes) && !ContainerFormat.isAttached(bytes);
     }
 
     private static byte[] peekBytes(File file) {

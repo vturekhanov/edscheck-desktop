@@ -15,7 +15,7 @@ public final class VerifyLibraryJarsMain {
             LibraryJars.verifyAll(libDir);
             System.out.println(Messages.get(MsgKey.VERIFY_LIBRARY_JARS_CONFIRMED, libDir));
         } catch (LibraryJarException e) {
-            System.err.println(Messages.get(MsgKey.CLI_ERROR, e.getMessage()));
+            System.err.println(Messages.get(MsgKey.ERROR, e.getMessage()));
             System.exit(2);
         }
     }

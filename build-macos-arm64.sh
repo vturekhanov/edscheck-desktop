@@ -78,7 +78,7 @@ done
 "$REPO_ROOT/build.sh"
 "$REPO_ROOT/build-gui.sh"
 
-CORE_JAR="$REPO_ROOT/dist/eds-check.jar"
+CORE_JAR="$REPO_ROOT/dist/eds-check-core.jar"
 GUI_JAR="$REPO_ROOT/dist/eds-check-gui.jar"
 
 GUI_VERSION_FILE="$REPO_ROOT/src/gui/java/kz/edscheck/gui/GuiVersion.java"
@@ -218,9 +218,11 @@ if [ "$PKG_TYPE" = "dmg" ]; then
         --mac-package-name EDScheck \
         --mac-package-identifier kz.edscheck.gui
     rm -rf "$APP_STAGE_DIR"
-    FINAL_ARTIFACT="$DIST_DIR/EDScheck-$APP_VERSION.dmg"
+    FINAL_ARTIFACT="$DIST_DIR/EDScheck-$APP_VERSION-macos-arm64.dmg"
+    mv "$DIST_DIR/EDScheck-$APP_VERSION.dmg" "$FINAL_ARTIFACT"
 elif [ "$PKG_TYPE" = "pkg" ]; then
-    FINAL_ARTIFACT="$DIST_DIR/EDScheck-$APP_VERSION.pkg"
+    FINAL_ARTIFACT="$DIST_DIR/EDScheck-$APP_VERSION-macos-arm64.pkg"
+    mv "$DIST_DIR/EDScheck-$APP_VERSION.pkg" "$FINAL_ARTIFACT"
 fi
 
 echo

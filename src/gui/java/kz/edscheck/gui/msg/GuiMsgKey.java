@@ -33,7 +33,7 @@ public enum GuiMsgKey {
     FOOTER_DISCLAIMER("footer.disclaimer", 1),
     FOOTER_DISCLAIMER_LINK_TEXT("footer.disclaimer_link_text", 0),
 
-    ABOUT_MESSAGE("about.message", 1),
+    ABOUT_MESSAGE("about.message", 2),
 
     KALKAN_FIRST_RUN_TITLE("kalkan_first_run.title", 0),
     KALKAN_FIRST_RUN_EXPLANATION("kalkan_first_run.explanation", 1),

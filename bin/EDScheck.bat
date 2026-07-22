@@ -4,7 +4,7 @@ setlocal enabledelayedexpansion
 set "REPO_ROOT=%~dp0.."
 for %%i in ("%REPO_ROOT%") do set "REPO_ROOT=%%~fi"
 
-set "CORE_JAR=%REPO_ROOT%\dist\eds-check.jar"
+set "CORE_JAR=%REPO_ROOT%\dist\eds-check-core.jar"
 set "GUI_JAR=%REPO_ROOT%\dist\eds-check-gui.jar"
 set "KALKAN_JAR=%REPO_ROOT%\lib\kalkancrypt-0.7.6-certified.jar"
 set "LIB_DIR=%REPO_ROOT%\lib"

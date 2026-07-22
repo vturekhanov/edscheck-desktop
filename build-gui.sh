@@ -29,7 +29,7 @@ JDK_BIN="$(resolve_jdk_bin)" || {
 JAVAC="$JDK_BIN/javac"
 JAR_TOOL="$JDK_BIN/jar"
 
-CORE_JAR="$DIR/dist/eds-check.jar"
+CORE_JAR="$DIR/dist/eds-check-core.jar"
 if [ ! -f "$CORE_JAR" ]; then
     echo "ошибка: не найден $CORE_JAR" >&2
     echo "  сначала соберите ядро: ./build.sh" >&2
@@ -78,4 +78,4 @@ printf 'Premain-Class: kz.edscheck.gui.GuiAgent\n' > "$MANIFEST_EXTRA"
     -C "$BUILD_DIR" .
 rm -f "$MANIFEST_EXTRA"
 
-echo "собрано: $DIST_DIR/eds-check-gui.jar (запуск — bin/EDScheck, classpath включает dist/eds-check.jar)"
+echo "собрано: $DIST_DIR/eds-check-gui.jar (запуск — bin/EDScheck, classpath включает dist/eds-check-core.jar)"

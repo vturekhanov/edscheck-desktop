@@ -27,7 +27,7 @@ exit /b 1
 set "JAVAC=%JDK_BIN%\javac.exe"
 set "JAR_TOOL=%JDK_BIN%\jar.exe"
 
-set "CORE_JAR=%REPO_ROOT%dist\eds-check.jar"
+set "CORE_JAR=%REPO_ROOT%dist\eds-check-core.jar"
 if exist "%CORE_JAR%" goto :core_ok
 echo error: %CORE_JAR% not found
 echo   build the core first: build.bat
@@ -60,5 +60,5 @@ if exist "%REPO_ROOT%src\gui\resources" xcopy /E /I /Y /Q "%REPO_ROOT%src\gui\re
 "%JAR_TOOL%" --create --file "%DIST_DIR%\eds-check-gui.jar" --main-class kz.edscheck.gui.GuiMain -C "%BUILD_DIR%" .
 if errorlevel 1 exit /b 1
 
-echo built: %DIST_DIR%\eds-check-gui.jar (run bin\EDScheck.bat, classpath includes dist\eds-check.jar)
+echo built: %DIST_DIR%\eds-check-gui.jar (run bin\EDScheck.bat, classpath includes dist\eds-check-core.jar)
 endlocal

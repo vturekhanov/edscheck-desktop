@@ -51,8 +51,8 @@ del "%SOURCES_FILE%"
 
 if exist "%REPO_ROOT%src\main\resources" xcopy /E /I /Y /Q "%REPO_ROOT%src\main\resources" "%BUILD_DIR%" >nul
 
-"%JAR_TOOL%" --create --file "%DIST_DIR%\eds-check.jar" --main-class kz.edscheck.cli.Main -C "%BUILD_DIR%" .
+"%JAR_TOOL%" --create --file "%DIST_DIR%\eds-check-core.jar" -C "%BUILD_DIR%" .
 if errorlevel 1 exit /b 1
 
-echo built: %DIST_DIR%\eds-check.jar
+echo built: %DIST_DIR%\eds-check-core.jar
 endlocal

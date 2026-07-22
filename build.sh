@@ -62,8 +62,7 @@ if [ -d "$RES_DIR" ]; then
     cp -R "$RES_DIR/." "$BUILD_DIR/"
 fi
 
-"$JAR_TOOL" --create --file "$DIST_DIR/eds-check.jar" \
-    --main-class kz.edscheck.cli.Main \
+"$JAR_TOOL" --create --file "$DIST_DIR/eds-check-core.jar" \
     -C "$BUILD_DIR" .
 
-echo "собрано: $DIST_DIR/eds-check.jar"
+echo "собрано: $DIST_DIR/eds-check-core.jar"

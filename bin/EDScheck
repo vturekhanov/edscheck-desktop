@@ -14,7 +14,7 @@ DIR="$(cd -P "$(dirname "$_src")" && pwd)"
 unset _src _dir
 REPO_ROOT="$(cd "$DIR/.." && pwd)"
 
-CORE_JAR="$REPO_ROOT/dist/eds-check.jar"
+CORE_JAR="$REPO_ROOT/dist/eds-check-core.jar"
 GUI_JAR="$REPO_ROOT/dist/eds-check-gui.jar"
 KALKAN_JAR="$REPO_ROOT/lib/kalkancrypt-0.7.6-certified.jar"
 LIB_DIR="$REPO_ROOT/lib"
