@@ -39,7 +39,12 @@ public final class LibraryJars {
         "e1ec96c7f00c764206e5f55046de017ed28a2669afe4b469f883ea690fd1659a",
 
         "flatlaf-3.7.2-windows-x86_64.dll",
-        "533407841892e294f70e4f1443ebddecbea83b7f0bd2af876181505073b677d5");
+        "533407841892e294f70e4f1443ebddecbea83b7f0bd2af876181505073b677d5",
+
+        "flatlaf-3.7.2-linux-arm64.so",
+        "5cb60b7846f72ca5a3cb7936f1fb848c76e7eb047c959eeb4fbf6fec77c6fe57",
+        "flatlaf-3.7.2-windows-arm64.dll",
+        "1c63bac895f42bd873a6e643af8864b73a4ec3fb51620db2f60ca45ec589964a");
 
     private LibraryJars() {
     }

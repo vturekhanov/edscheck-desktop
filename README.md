@@ -96,4 +96,5 @@ bin\EDScheck.bat
 
 ## Лицензия
 
-GPL-3.0 — полный текст в [`LICENSE`](LICENSE).
+GPL-3.0 — полный текст в [`LICENSE`](LICENSE), с дополнительным разрешением
+на связывание с KalkanCrypt (GPLv3 §7) — [`LICENSE-EXCEPTION`](LICENSE-EXCEPTION).
