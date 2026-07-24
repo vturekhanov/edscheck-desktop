@@ -19,7 +19,21 @@
 - Панель ошибок показывает причину, если файл не подходит для проверки.
 - Светлая/тёмная тема — под системную, с автопереключением на лету.
 
-Криптографию выполняет сертифицированная библиотека **KalkanCrypt** (сертификат KZ.7500507.05.01.40731) — сама библиотека **НЕ входит в этот репозиторий**, но запросить её может любой желающий (см. шаг 2 ниже).
+Криптографию выполняет сертифицированная библиотека **KalkanCrypt** (сертификат KZ.7500507.05.01.40731) — сама библиотека **НЕ входит ни в этот репозиторий, ни в скачиваемое приложение**, но запросить её может любой желающий (см. «Первый запуск» ниже или шаг 2 для сборки из исходников).
+
+## Установка
+
+[**Последняя версия**](https://github.com/vturekhanov/edscheck-desktop/releases/latest) — macOS 11 (Big Sur) или новее (только для процессоров Apple Silicon).
+
+Скачайте файл `EDScheck-<версия>-macos-arm64.dmg`, откройте его и перетащите приложение в «Программы». Приложение подписано Developer ID и заверено (нотаризовано) Apple.
+
+Для Linux и Windows приложение пока собирается только из исходников (см. ниже).
+
+### Первый запуск
+
+При первом запуске приложение откроет окно с просьбой перетащить в него файл библиотеки — `kalkancrypt-0.7.6-certified.jar` из SDK, который выдаёт НУЦ РК (папка `SDK 2.0\Java\provider`). [Запросить SDK](https://sdk.pki.gov.kz) может любой желающий.
+
+Приложение сохранит библиотеку у себя, и дальше будет запускаться обычным образом. Принимается именно эта версия библиотеки: её контрольная сумма проверяется при каждом запуске.
 
 ## Сборка из исходников
 
@@ -29,7 +43,7 @@
 
 ### 1. Портативный JDK 21
 
-macOS (Apple Silicon):
+#### macOS (Apple Silicon)
 ```sh
 mkdir -p .jdk
 curl -fL -o /tmp/temurin21.tar.gz "https://api.adoptium.net/v3/binary/latest/21/ga/mac/aarch64/jdk/hotspot/normal/eclipse?project=jdk"
@@ -37,7 +51,7 @@ tar -xzf /tmp/temurin21.tar.gz -C .jdk --strip-components=3
 .jdk/bin/java -version   # ожидается Temurin-21.x.x (LTS)
 ```
 
-Linux (x64):
+#### Linux (x64)
 ```sh
 mkdir -p .jdk
 curl -fL -o /tmp/temurin21.tar.gz "https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jdk/hotspot/normal/eclipse?project=jdk"
@@ -45,9 +59,9 @@ tar -xzf /tmp/temurin21.tar.gz -C .jdk --strip-components=1
 .jdk/bin/java -version   # ожидается Temurin-21.x.x (LTS)
 ```
 
-Windows (x64):
+#### Windows (x64)
 
-Скачать zip-архив [Temurin 21 для Windows x64](https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk) и распаковать в `.jdk\` в корне репозитория так, чтобы получился путь `.jdk\bin\java.exe` (архив, как и на macOS, может быть вложен на один уровень глубже — при необходимости переместите содержимое вложенной папки на уровень выше).
+Скачайте zip-архив [Temurin 21 для Windows x64](https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jdk/hotspot/normal/eclipse?project=jdk) и распакуйте в `.jdk\` в корне репозитория так, чтобы получился путь `.jdk\bin\java.exe` (архив, как и на macOS, может быть вложен на один уровень глубже — при необходимости переместите содержимое вложенной папки на уровень выше).
 
 ### 2. KalkanCrypt JCE-провайдер
 
@@ -63,14 +77,14 @@ kalkancrypt-0.7.6-certified.jar
 
 ### 3. Собрать и запустить
 
-macOS:
+#### macOS
 
-Запустить только **один раз**, если раньше не устанавливались Xcode Command Line Tools. Нужны для build-macos-arm64.sh — он вызывает нативные утилиты macOS (codesign, pkgbuild, hdiutil, sips, iconutil), которых нет на чистой системе без этого пакета.
+Запустите только **один раз**, если раньше не устанавливались Xcode Command Line Tools. Нужны для build-macos-arm64.sh — он вызывает нативные утилиты macOS (codesign, pkgbuild, hdiutil, sips, iconutil), которых нет на чистой системе без этого пакета.
 ```sh
 xcode-select --install
 ```
 
-Запускать после установки Xcode Command Line Tools.
+Запустите после установки Xcode Command Line Tools.
 ```sh
 ./build-macos-arm64.sh
 ```
@@ -79,13 +93,13 @@ xcode-select --install
 
 Если по каким-то причинам хотите обойтись без установки Xcode Command Line Tools, просто выполните команды для Linux (см. ниже). Под macOS они тоже сработают.
 
-Linux:
+#### Linux
 ```sh
 ./build.sh && ./build-gui.sh
 bin/EDScheck
 ```
 
-Windows:
+#### Windows
 ```bat
 build.bat
 build-gui.bat
