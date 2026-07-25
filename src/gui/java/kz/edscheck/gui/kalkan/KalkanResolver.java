@@ -2,9 +2,11 @@ package kz.edscheck.gui.kalkan;
 
 import java.io.IOException;
 import java.lang.instrument.Instrumentation;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.UnaryOperator;
 import java.util.jar.JarFile;
 
 import kz.edscheck.trust.KalkanJar;
@@ -79,17 +81,33 @@ public final class KalkanResolver {
     }
 
     public static Path storageDir() {
+        return storageDir(System::getenv);
+    }
+
+    static Path storageDir(UnaryOperator<String> env) {
         String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         String home = System.getProperty("user.home", ".");
         if (os.contains("mac")) {
             return Path.of(home, "Library", "Application Support", "EDScheck");
         }
         if (os.contains("windows")) {
-            String appData = System.getenv("APPDATA");
+            String appData = env.apply("APPDATA");
             if (appData != null && !appData.isBlank()) {
                 return Path.of(appData, "EDScheck");
             }
             return Path.of(home, "AppData", "Roaming", "EDScheck");
+        }
+
+        String xdgDataHome = env.apply("XDG_DATA_HOME");
+        if (xdgDataHome != null && !xdgDataHome.isBlank()) {
+            try {
+                Path candidate = Path.of(xdgDataHome);
+                if (candidate.isAbsolute()) {
+                    return candidate.resolve("edscheck");
+                }
+            } catch (InvalidPathException e) {
+
+            }
         }
         return Path.of(home, ".local", "share", "edscheck");
     }
