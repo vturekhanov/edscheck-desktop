@@ -1,19 +1,15 @@
 package kz.edscheck.gui;
 
 import java.awt.Desktop;
-import java.awt.KeyboardFocusManager;
-import java.awt.Window;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.List;
 
-import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import com.formdev.flatlaf.FlatLaf;
 
-import kz.edscheck.Version;
 import kz.edscheck.gui.kalkan.KalkanFirstRunDialog;
 import kz.edscheck.gui.kalkan.KalkanResolver;
 import kz.edscheck.gui.msg.GuiMessages;
@@ -49,7 +45,7 @@ public final class GuiMain {
         if (Desktop.isDesktopSupported()) {
             Desktop desktop = Desktop.getDesktop();
             if (desktop.isSupported(Desktop.Action.APP_ABOUT)) {
-                desktop.setAboutHandler(e -> showAboutDialog());
+                desktop.setAboutHandler(e -> AboutDialog.show());
             }
         }
 
@@ -97,14 +93,4 @@ public final class GuiMain {
         return holder[0];
     }
 
-    private static void showAboutDialog() {
-        SwingUtilities.invokeLater(() -> {
-            Window owner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
-            JOptionPane.showMessageDialog(
-                owner,
-                GuiMessages.get(GuiMsgKey.ABOUT_MESSAGE, GuiVersion.VALUE, Version.VALUE),
-                GuiMessages.get(GuiMsgKey.WINDOW_TITLE),
-                JOptionPane.INFORMATION_MESSAGE);
-        });
-    }
 }

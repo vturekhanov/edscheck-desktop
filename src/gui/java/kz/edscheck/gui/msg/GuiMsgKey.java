@@ -35,6 +35,8 @@ public enum GuiMsgKey {
 
     ABOUT_MESSAGE("about.message", 2),
 
+    BUTTON_ABOUT("button.about", 0),
+
     KALKAN_FIRST_RUN_TITLE("kalkan_first_run.title", 0),
     KALKAN_FIRST_RUN_EXPLANATION("kalkan_first_run.explanation", 1),
     KALKAN_FIRST_RUN_DROP_HINT("kalkan_first_run.drop_hint", 1),

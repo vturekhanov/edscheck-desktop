@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -37,6 +38,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.UIManager;
 
+import com.formdev.flatlaf.icons.FlatOptionPaneInformationIcon;
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 
@@ -65,6 +67,8 @@ public final class MainPanel extends JPanel {
 
     private static final float VERDICT_FONT_SIZE_DELTA = 2f;
 
+    private static final float ABOUT_ICON_SCALE = 0.5625f;
+
     private static final String SPECIALIST_URL =
         "https://sigex.kz/blog/2021-01-25-digital-signatures-in-courts/#where-to-find-experts";
 
@@ -86,6 +90,25 @@ public final class MainPanel extends JPanel {
 
     static boolean colorEmojiSupported() {
         return SystemInfo.isMacOS;
+    }
+
+    private static boolean systemAboutMenuAvailable() {
+        return Desktop.isDesktopSupported()
+            && Desktop.getDesktop().isSupported(Desktop.Action.APP_ABOUT);
+    }
+
+    private static JButton buildAboutButton() {
+        JButton button = new JButton(aboutIcon());
+        button.setToolTipText(GuiMessages.get(GuiMsgKey.BUTTON_ABOUT));
+        button.putClientProperty("JButton.buttonType", "borderless");
+        button.addActionListener(e -> AboutDialog.show());
+        return button;
+    }
+
+    private static Icon aboutIcon() {
+        FlatOptionPaneInformationIcon icon = new FlatOptionPaneInformationIcon();
+        icon.setScale(ABOUT_ICON_SCALE);
+        return icon;
     }
 
     enum Kind { PASS, WARN, FAIL }
@@ -116,6 +139,8 @@ public final class MainPanel extends JPanel {
     final JButton cancelDocumentButton;
     final JPanel resultsContainer;
     final JLabel footerPane;
+
+    final JButton aboutButton;
     private volatile boolean busy;
     private ResultViewModel currentModel;
     private boolean detailed;
@@ -136,10 +161,19 @@ public final class MainPanel extends JPanel {
         busyIndicator.setIndeterminate(true);
         busyIndicator.setVisible(false);
 
-        JPanel top = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-        top.add(chooseButton);
-        top.add(statusLabel);
-        top.add(busyIndicator);
+        JPanel topLeft = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
+        topLeft.add(chooseButton);
+        topLeft.add(statusLabel);
+        topLeft.add(busyIndicator);
+
+        JPanel top = new JPanel(new BorderLayout());
+        top.add(topLeft, BorderLayout.WEST);
+        aboutButton = systemAboutMenuAvailable() ? null : buildAboutButton();
+        if (aboutButton != null) {
+            JPanel topRight = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+            topRight.add(aboutButton);
+            top.add(topRight, BorderLayout.EAST);
+        }
 
         chooseDocumentButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_CHOOSE_DOCUMENT));
         chooseDocumentButton.addActionListener(e -> onChooseDocument());
@@ -205,6 +239,10 @@ public final class MainPanel extends JPanel {
         super.updateUI();
         if (footerPane != null) {
             footerPane.setText(footerText());
+        }
+
+        if (aboutButton != null && aboutButton.getIcon() != null) {
+            aboutButton.setIcon(aboutIcon());
         }
     }
 
