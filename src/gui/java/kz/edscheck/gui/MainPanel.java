@@ -218,6 +218,8 @@ public final class MainPanel extends JPanel {
     }
 
     void handleSelectedContainer(File file) {
+
+        clearResults();
         if (isDetachedCades(peekBytes(file))) {
             pendingContainer = file;
             documentRow.setVisible(true);
@@ -326,10 +328,16 @@ public final class MainPanel extends JPanel {
         busyIndicator.setVisible(false);
     }
 
-    void showError(String message) {
-        showIdle();
+    private void clearResults() {
         currentModel = null;
         resultsContainer.removeAll();
+        resultsContainer.revalidate();
+        resultsContainer.repaint();
+    }
+
+    void showError(String message) {
+        showIdle();
+        clearResults();
         Font font = new JLabel().getFont();
         resultsContainer.add(iconRow(Kind.FAIL, message, COLOR_FAIL, font));
         resultsContainer.revalidate();
@@ -542,7 +550,11 @@ public final class MainPanel extends JPanel {
                 if (files.isEmpty()) {
                     return false;
                 }
-                handleSelectedContainer(files.get(0));
+                if (pendingContainer != null) {
+                    chooseDocument(files.get(0));
+                } else {
+                    handleSelectedContainer(files.get(0));
+                }
                 return true;
             } catch (UnsupportedFlavorException | IOException e) {
                 return false;
