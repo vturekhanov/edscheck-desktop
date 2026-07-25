@@ -26,6 +26,7 @@ import java.util.Set;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -37,6 +38,7 @@ import javax.swing.TransferHandler;
 import javax.swing.UIManager;
 
 import com.formdev.flatlaf.util.SystemFileChooser;
+import com.formdev.flatlaf.util.SystemInfo;
 
 import kz.edscheck.app.RunnerParams;
 import kz.edscheck.domain.Certificate;
@@ -59,6 +61,7 @@ public final class MainPanel extends JPanel {
 
     private static final Color COLOR_WARN = new Color(0xb2, 0x6a, 0x00);
     private static final Color COLOR_FAIL = new Color(0xc6, 0x28, 0x28);
+    private static final Color COLOR_PASS = new Color(0x2e, 0x7d, 0x32);
 
     private static final float VERDICT_FONT_SIZE_DELTA = 2f;
 
@@ -79,6 +82,28 @@ public final class MainPanel extends JPanel {
             }
         }
         return null;
+    }
+
+    static boolean colorEmojiSupported() {
+        return SystemInfo.isMacOS;
+    }
+
+    enum Kind { PASS, WARN, FAIL }
+
+    private static String glyphFor(Kind kind) {
+        return switch (kind) {
+            case PASS -> GuiMessages.get(GuiMsgKey.GLYPH_GENUINE);
+            case WARN -> GuiMessages.get(GuiMsgKey.GLYPH_GENUINE_WARNINGS);
+            case FAIL -> GuiMessages.get(GuiMsgKey.GLYPH_INVALID);
+        };
+    }
+
+    private static Icon iconFor(Kind kind, int size) {
+        return switch (kind) {
+            case PASS -> new StatusIcons.Pass(size, COLOR_PASS);
+            case WARN -> new StatusIcons.Warn(size, COLOR_WARN);
+            case FAIL -> new StatusIcons.Fail(size, COLOR_FAIL);
+        };
     }
 
     private static final long DETECT_PEEK_MAX_BYTES = 500L * 1024 * 1024;
@@ -306,7 +331,7 @@ public final class MainPanel extends JPanel {
         currentModel = null;
         resultsContainer.removeAll();
         Font font = new JLabel().getFont();
-        resultsContainer.add(iconRow(GuiMessages.get(GuiMsgKey.GLYPH_INVALID), message, COLOR_FAIL, font));
+        resultsContainer.add(iconRow(Kind.FAIL, message, COLOR_FAIL, font));
         resultsContainer.revalidate();
         resultsContainer.repaint();
     }
@@ -417,10 +442,14 @@ public final class MainPanel extends JPanel {
         return row;
     }
 
-    private static JComponent iconRow(String icon, String text, Color color, Font textFont) {
-        JLabel iconLabel = new JLabel(icon);
-        if (EMOJI_FONT_FAMILY != null) {
-            iconLabel.setFont(new Font(EMOJI_FONT_FAMILY, Font.PLAIN, Math.round(textFont.getSize2D())));
+    private static JComponent iconRow(Kind kind, String text, Color color, Font textFont) {
+        int iconSize = Math.round(textFont.getSize2D());
+        JLabel iconLabel;
+        if (colorEmojiSupported() && EMOJI_FONT_FAMILY != null) {
+            iconLabel = new JLabel(glyphFor(kind));
+            iconLabel.setFont(new Font(EMOJI_FONT_FAMILY, Font.PLAIN, iconSize));
+        } else {
+            iconLabel = new JLabel(iconFor(kind, iconSize));
         }
         JLabel textLabel = new JLabel(text);
         textLabel.setFont(textFont);
@@ -456,13 +485,11 @@ public final class MainPanel extends JPanel {
         return value.atZone(ZoneId.systemDefault()).format(DT_FMT);
     }
 
-    private static String verdictIcon(ResultViewModel.SignatureView sig) {
+    static Kind verdictIcon(ResultViewModel.SignatureView sig) {
         if (sig.verdict() != Verdict.GENUINE) {
-            return GuiMessages.get(GuiMsgKey.GLYPH_INVALID);
+            return Kind.FAIL;
         }
-        return sig.warnings().isEmpty()
-            ? GuiMessages.get(GuiMsgKey.GLYPH_GENUINE)
-            : GuiMessages.get(GuiMsgKey.GLYPH_GENUINE_WARNINGS);
+        return sig.warnings().isEmpty() ? Kind.PASS : Kind.WARN;
     }
 
     private static Color verdictColor(ResultViewModel.SignatureView sig) {
@@ -481,12 +508,12 @@ public final class MainPanel extends JPanel {
         };
     }
 
-    private static String statusIcon(CheckStatus status) {
+    static Kind statusIcon(CheckStatus status) {
         return switch (status) {
-            case PASS -> GuiMessages.get(GuiMsgKey.GLYPH_GENUINE);
-            case WARN -> GuiMessages.get(GuiMsgKey.GLYPH_GENUINE_WARNINGS);
-            case FAIL, NOT_VERIFIED -> GuiMessages.get(GuiMsgKey.GLYPH_INVALID);
-            case SKIP -> "";
+            case PASS -> Kind.PASS;
+            case WARN -> Kind.WARN;
+            case FAIL, NOT_VERIFIED -> Kind.FAIL;
+            case SKIP -> null;
         };
     }
 
