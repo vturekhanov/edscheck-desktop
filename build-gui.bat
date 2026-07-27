@@ -57,8 +57,12 @@ del "%SOURCES_FILE%"
 
 if exist "%REPO_ROOT%src\gui\resources" xcopy /E /I /Y /Q "%REPO_ROOT%src\gui\resources" "%BUILD_DIR%" >nul
 
-"%JAR_TOOL%" --create --file "%DIST_DIR%\eds-check-gui.jar" --main-class kz.edscheck.gui.GuiMain -C "%BUILD_DIR%" .
+set "MANIFEST_EXTRA=%REPO_ROOT%build\gui\premain-manifest.txt"
+echo Premain-Class: kz.edscheck.gui.GuiAgent> "%MANIFEST_EXTRA%"
+
+"%JAR_TOOL%" --create --file "%DIST_DIR%\eds-check-gui.jar" --manifest "%MANIFEST_EXTRA%" --main-class kz.edscheck.gui.GuiMain -C "%BUILD_DIR%" .
 if errorlevel 1 exit /b 1
+del "%MANIFEST_EXTRA%"
 
 echo built: %DIST_DIR%\eds-check-gui.jar (run bin\EDScheck.bat, classpath includes dist\eds-check-core.jar)
 endlocal
