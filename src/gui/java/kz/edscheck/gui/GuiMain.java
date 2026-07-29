@@ -1,11 +1,13 @@
 package kz.edscheck.gui;
 
 import java.awt.Desktop;
+import java.awt.GraphicsEnvironment;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.List;
 
+import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 import com.formdev.flatlaf.FlatLaf;
@@ -36,6 +38,7 @@ public final class GuiMain {
             LibraryJars.verifyRuntime(LibraryJars.resolveDirFromSystemProperty());
         } catch (LibraryJarException e) {
             System.err.println(Messages.get(MsgKey.ERROR, e.getMessage()));
+            showFatalStartupError(GuiMessages.get(GuiMsgKey.ERROR_LIBRARY_STARTUP));
             System.exit(2);
         }
 
@@ -93,4 +96,17 @@ public final class GuiMain {
         return holder[0];
     }
 
+    private static void showFatalStartupError(String message) {
+        if (GraphicsEnvironment.isHeadless()) {
+            return;
+        }
+        try {
+            SwingUtilities.invokeAndWait(() -> JOptionPane.showMessageDialog(
+                null, message, GuiMessages.get(GuiMsgKey.WINDOW_TITLE), JOptionPane.ERROR_MESSAGE));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (InvocationTargetException e) {
+
+        }
+    }
 }

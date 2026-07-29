@@ -23,6 +23,8 @@ public enum GuiMsgKey {
     ERROR_LIBRARY("error.library", 1),
     ERROR_UNEXPECTED("error.unexpected", 1),
 
+    ERROR_LIBRARY_STARTUP("error.library_startup", 0),
+
     BUTTON_EXPAND("button.expand", 0),
     BUTTON_COLLAPSE("button.collapse", 0),
 
