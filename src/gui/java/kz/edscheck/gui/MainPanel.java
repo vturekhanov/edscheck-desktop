@@ -201,6 +201,8 @@ public final class MainPanel extends JPanel {
         resultsContainer = new JPanel();
         resultsContainer.setLayout(new BoxLayout(resultsContainer, BoxLayout.Y_AXIS));
 
+        resultsContainer.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+
         footerPane = buildFooter();
 
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -495,6 +497,8 @@ public final class MainPanel extends JPanel {
             extractButton.addActionListener(e -> onExtractDocument("ddcard".equals(model.containerFormat())));
             actionsRow.add(extractButton);
         }
+
+        actionsRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, actionsRow.getPreferredSize().height));
         panel.add(actionsRow);
 
         panel.add(Box.createVerticalStrut(8));
