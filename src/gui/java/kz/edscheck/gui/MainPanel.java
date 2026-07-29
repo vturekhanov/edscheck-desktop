@@ -17,6 +17,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -31,6 +32,7 @@ import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
@@ -43,6 +45,8 @@ import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 
 import kz.edscheck.app.RunnerParams;
+import kz.edscheck.ddcard.Ddcard;
+import kz.edscheck.ddcard.DdcardContent;
 import kz.edscheck.domain.Certificate;
 import kz.edscheck.domain.CheckStatus;
 import kz.edscheck.domain.DocumentSource;
@@ -55,9 +59,11 @@ import kz.edscheck.gui.msg.GuiMsgKey;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.parsing.ContainerFormat;
+import kz.edscheck.parsing.ContentExtraction;
 import kz.edscheck.trace.Trace;
 import kz.edscheck.trust.KalkanJarException;
 import kz.edscheck.trust.LibraryJarException;
+import kz.edscheck.trust.LibraryJars;
 
 public final class MainPanel extends JPanel {
 
@@ -147,6 +153,8 @@ public final class MainPanel extends JPanel {
 
     private File pendingContainer;
     final JPanel documentRow;
+
+    private File lastContainerFile;
 
     public MainPanel(CheckService checkService) {
         super(new BorderLayout(8, 8));
@@ -319,6 +327,7 @@ public final class MainPanel extends JPanel {
 
     private void runCheck(File file, File document) {
         showBusy();
+        lastContainerFile = file;
         DocumentSource documentSource = document != null ? DocumentSource.ofFile(document.toPath()) : null;
         String documentName = document != null ? document.getName() : null;
         RunnerParams params = new RunnerParams(
@@ -350,6 +359,68 @@ public final class MainPanel extends JPanel {
             return GuiMessages.get(GuiMsgKey.ERROR_GENERIC, detail);
         }
         return GuiMessages.get(GuiMsgKey.ERROR_UNEXPECTED, detail);
+    }
+
+    private void onExtractDocument(boolean ddcard) {
+        File container = lastContainerFile;
+        if (container == null) {
+            return;
+        }
+        String defaultName;
+        DdcardContent ddcardContent = null;
+        if (ddcard) {
+            try {
+                LibraryJars.verifyRuntime(LibraryJars.resolveDirFromSystemProperty());
+                byte[] raw = Files.readAllBytes(container.toPath());
+                ddcardContent = Ddcard.parseDdcard(raw);
+            } catch (Exception e) {
+                showExtractError(e);
+                return;
+            }
+            defaultName = ContentExtraction.sanitizeBasename(ddcardContent.documentName());
+        } else {
+            String byExtension = ContentExtraction.defaultAttachedName(container.toPath());
+            defaultName = byExtension != null ? byExtension : container.getName();
+        }
+
+        SystemFileChooser chooser = new SystemFileChooser();
+        chooser.setDialogTitle(GuiMessages.get(GuiMsgKey.EXTRACT_CHOOSER_TITLE));
+        chooser.setCurrentDirectory(container.getAbsoluteFile().getParentFile());
+        chooser.setSelectedFile(new File(defaultName));
+        if (chooser.showSaveDialog(this) != SystemFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        Path target = chooser.getSelectedFile().toPath();
+
+        chooseButton.setEnabled(false);
+        DdcardContent finalDdcardContent = ddcardContent;
+        new Thread(() -> {
+            Throwable error = null;
+            try {
+                if (finalDdcardContent != null) {
+                    ContentExtraction.copyAtomically(finalDdcardContent.document(), target);
+                } else {
+                    ContentExtraction.extract(DocumentSource.ofFile(container.toPath()), target);
+                }
+            } catch (Throwable t) {
+                error = t;
+            }
+            Throwable finalError = error;
+            SwingUtilities.invokeLater(() -> {
+                chooseButton.setEnabled(!busy);
+                if (finalError != null) {
+                    showExtractError(finalError);
+                } else {
+                    JOptionPane.showMessageDialog(this, GuiMessages.get(GuiMsgKey.EXTRACT_SUCCESS, target.getFileName()),
+                        GuiMessages.get(GuiMsgKey.WINDOW_TITLE), JOptionPane.INFORMATION_MESSAGE);
+                }
+            });
+        }, "gui-extract").start();
+    }
+
+    private void showExtractError(Throwable cause) {
+        JOptionPane.showMessageDialog(this, errorMessage(cause),
+            GuiMessages.get(GuiMsgKey.WINDOW_TITLE), JOptionPane.ERROR_MESSAGE);
     }
 
     void showBusy() {
@@ -414,9 +485,17 @@ public final class MainPanel extends JPanel {
         }
         JButton toggle = new JButton(GuiMessages.get(
             detailed ? GuiMsgKey.BUTTON_COLLAPSE : GuiMsgKey.BUTTON_EXPAND));
-        toggle.setAlignmentX(Component.LEFT_ALIGNMENT);
         toggle.addActionListener(e -> toggleDetailed());
-        panel.add(toggle);
+
+        JPanel actionsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        actionsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        actionsRow.add(toggle);
+        if ("cms".equals(model.containerFormat()) || "ddcard".equals(model.containerFormat())) {
+            JButton extractButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_EXTRACT_DOCUMENT));
+            extractButton.addActionListener(e -> onExtractDocument("ddcard".equals(model.containerFormat())));
+            actionsRow.add(extractButton);
+        }
+        panel.add(actionsRow);
 
         panel.add(Box.createVerticalStrut(8));
         return panel;

@@ -49,6 +49,71 @@ final class AttachedSplitter {
         }
     }
 
+    static void tryExtract(DocumentSource container, OutputStream out) throws IOException {
+        try (InputStream raw = container.open()) {
+            Counting in = new Counting(raw);
+            extract(in, out);
+        }
+    }
+
+    private static void extract(Counting in, OutputStream out) throws IOException {
+        Tlv outer = readTagLen(in);
+        requireTag(outer, 0x30, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_CONTENT_INFO_SEQUENCE));
+
+        Tlv oidTlv = readTagLen(in);
+        requireTag(oidTlv, 0x06, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_CONTENT_TYPE_OID));
+        byte[] oidFull = materializeFullTlv(in, oidTlv);
+        DERObjectIdentifier contentType = readAsn1(oidFull, DERObjectIdentifier.class);
+        if (!CMSObjectIdentifiers.signedData.equals(contentType)) {
+            throw new SplitFailedException(
+                Messages.get(MsgKey.ATTACHED_SPLITTER_WRONG_CONTENT_TYPE, contentType.getId()));
+        }
+
+        Tlv explicit0 = readTagLen(in);
+        requireTag(explicit0, 0xA0, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_EXPLICIT0_CONTENT));
+
+        Tlv signedDataTlv = readTagLen(in);
+        requireTag(signedDataTlv, 0x30, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_SIGNED_DATA_SEQUENCE));
+
+        Tlv versionTlv = readTagLen(in);
+        requireTag(versionTlv, 0x02, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_VERSION));
+        materializeFullTlv(in, versionTlv); 
+
+        Tlv digestAlgsTlv = readTagLen(in);
+        requireTag(digestAlgsTlv, 0x31, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_DIGEST_ALGORITHMS));
+        materializeFullTlv(in, digestAlgsTlv); 
+
+        Tlv encapTlv = readTagLen(in);
+        requireTag(encapTlv, 0x30, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_ENCAP_CONTENT_INFO));
+        long encapStart = in.count();
+        long encapLimit = encapTlv.indefinite ? -1 : encapStart + encapTlv.length;
+
+        Tlv eContentTypeTlv = readTagLen(in);
+        requireTag(eContentTypeTlv, 0x06, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_ECONTENT_TYPE));
+        materializeFullTlv(in, eContentTypeTlv); 
+
+        Tlv eContentWrapper;
+        if (encapTlv.indefinite) {
+            eContentWrapper = readTlvOrEoc(in);
+            if (eContentWrapper == null) {
+
+                throw new SplitFailedException(Messages.get(MsgKey.ATTACHED_SPLITTER_ECONTENT_ABSENT));
+            }
+        } else {
+            if (in.count() >= encapLimit) {
+                throw new SplitFailedException(Messages.get(MsgKey.ATTACHED_SPLITTER_ECONTENT_ABSENT));
+            }
+            eContentWrapper = readTagLen(in);
+        }
+        requireTag(eContentWrapper, 0xA0, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_ECONTENT_WRAPPER));
+        Tlv octetTlv = readTagLen(in);
+        if (octetTlv.tagByte != 0x04 && octetTlv.tagByte != 0x24) {
+            throw new SplitFailedException(Messages.get(MsgKey.ATTACHED_SPLITTER_ECONTENT_NOT_OCTET_STRING,
+                Integer.toHexString(octetTlv.tagByte)));
+        }
+        streamOctetStringIntoOutput(in, octetTlv, out);
+    }
+
     private static Split split(Counting in) throws IOException {
         Tlv outer = readTagLen(in);
         requireTag(outer, 0x30, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_CONTENT_INFO_SEQUENCE));
@@ -262,6 +327,45 @@ final class AttachedSplitter {
             for (MessageDigest md : digests) {
                 md.update(buf, 0, n);
             }
+            remaining -= n;
+        }
+    }
+
+    private static void streamOctetStringIntoOutput(Counting in, Tlv tlv, OutputStream out) throws IOException {
+        if (!tlv.constructed) {
+            streamExactlyThroughOutput(in, tlv.length, out);
+            return;
+        }
+        if (!tlv.indefinite) {
+            long limit = in.count() + tlv.length;
+            while (in.count() < limit) {
+                Tlv child = readTagLen(in);
+                streamOctetStringIntoOutput(in, child, out);
+            }
+            if (in.count() != limit) {
+                throw new SplitFailedException(Messages.get(MsgKey.ATTACHED_SPLITTER_CHUNK_OUT_OF_BOUNDS));
+            }
+            return;
+        }
+        while (true) {
+            Tlv child = readTlvOrEoc(in);
+            if (child == null) {
+                break;
+            }
+            streamOctetStringIntoOutput(in, child, out);
+        }
+    }
+
+    private static void streamExactlyThroughOutput(InputStream in, long length, OutputStream out) throws IOException {
+        byte[] buf = new byte[STREAM_BUFFER];
+        long remaining = length;
+        while (remaining > 0) {
+            int chunk = (int) Math.min(buf.length, remaining);
+            int n = in.read(buf, 0, chunk);
+            if (n == -1) {
+                throw new SplitFailedException(Messages.get(MsgKey.ATTACHED_SPLITTER_UNEXPECTED_EOF_ECONTENT));
+            }
+            out.write(buf, 0, n);
             remaining -= n;
         }
     }

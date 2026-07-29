@@ -256,6 +256,10 @@ public enum MsgKey {
     ATTACHED_SPLITTER_EXPECT_ECONTENT_WRAPPER("attached_splitter.expect_econtent_wrapper", 0),
     ATTACHED_SPLITTER_TAG_MISMATCH("attached_splitter.tag_mismatch", 3),
 
+    CONTENT_EXTRACTION_NOTHING_TO_EXTRACT_DETACHED("content_extraction.nothing_to_extract_detached", 0),
+    CONTENT_EXTRACTION_UNRECOGNIZED_FORMAT("content_extraction.unrecognized_format", 0),
+    CONTENT_EXTRACTION_TOO_LARGE_FOR_FALLBACK("content_extraction.too_large_for_fallback", 1),
+
     JSON_TRAILING_DATA("json.trailing_data", 1),
     JSON_EXPECTED_COMMA_OR_CLOSE_BRACE("json.expected_comma_or_close_brace", 1),
     JSON_EXPECTED_COMMA_OR_CLOSE_BRACKET("json.expected_comma_or_close_bracket", 1),
