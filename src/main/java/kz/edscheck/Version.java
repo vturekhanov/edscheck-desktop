@@ -1,7 +1,7 @@
 package kz.edscheck;
 
 public final class Version {
-    public static final String VALUE = "0.5.2";
+    public static final String VALUE = "0.5.3";
 
     private Version() {
     }

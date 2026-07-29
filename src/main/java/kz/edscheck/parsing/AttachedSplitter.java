@@ -24,6 +24,8 @@ final class AttachedSplitter {
     private static final String PROV = "KALKAN";
     private static final int STREAM_BUFFER = 1 << 16;
 
+    private static final int EXTRACT_STREAM_BUFFER = 16 * 1024 * 1024;
+
     private static final long MAX_SMALL_FIELD_BYTES = 64L * 1024 * 1024;
 
     private AttachedSplitter() {
@@ -357,7 +359,7 @@ final class AttachedSplitter {
     }
 
     private static void streamExactlyThroughOutput(InputStream in, long length, OutputStream out) throws IOException {
-        byte[] buf = new byte[STREAM_BUFFER];
+        byte[] buf = new byte[EXTRACT_STREAM_BUFFER];
         long remaining = length;
         while (remaining > 0) {
             int chunk = (int) Math.min(buf.length, remaining);
