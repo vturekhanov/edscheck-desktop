@@ -8,7 +8,7 @@ import java.util.function.Supplier;
 
 public final class ThemeWatcher {
 
-    public static final long DEFAULT_POLL_INTERVAL_SECONDS = 3;
+    public static final long DEFAULT_POLL_INTERVAL_SECONDS = 10;
 
     private final Supplier<OsTheme> detector;
     private final Consumer<OsTheme> onChange;
