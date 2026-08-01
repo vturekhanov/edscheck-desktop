@@ -169,7 +169,8 @@ public final class VerificationEngine {
         revocation = Rules.applyRevocationDate(revocation, revocationOutcome).check();
 
         revocation = Rules.applyRevocationPeriod(
-            revocation, revocationOutcome, referenceTime.value(), Instant.now(), policy);
+            revocation, revocationOutcome, referenceTime.value(), Instant.now(),
+            sv.certificate().notAfter(), policy);
 
         if (referenceTime.source() == TimeSource.TIMESTAMP) {
             revocation = Rules.applyOcspSigningWindow(

@@ -576,7 +576,7 @@ public final class KalkanProvider implements VerificationProvider {
         return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.OCSP).detail(detail).build();
     }
 
-    private StageOutcome revocationByCrl(
+    StageOutcome revocationByCrl(
             ParsedSigner ps, X509Certificate signerCert, List<X509Certificate> trust,
             List<X509Certificate> containerCerts, String crlPath) {
         try {
@@ -584,6 +584,11 @@ public final class KalkanProvider implements VerificationProvider {
             X509CRL crl;
             try (InputStream in = new FileInputStream(crlPath)) {
                 crl = (X509CRL) cf.generateCRL(in);
+            }
+            if (!crl.getIssuerX500Principal().equals(signerCert.getIssuerX500Principal())) {
+                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_MISMATCH, crlPath));
+                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                    .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_MISMATCH)).build();
             }
             X509Certificate issuer = findBySubject(crl.getIssuerX500Principal(), trust, containerCerts);
             if (issuer == null) {
@@ -612,7 +617,8 @@ public final class KalkanProvider implements VerificationProvider {
                     .validFrom(thisUpdate).validUntil(nextUpdate)
                     .revokedAt(toInstant(entry.getRevocationDate())).revokedReason(reason).build();
             }
-            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_NOT_REVOKED));
+            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_NOT_REVOKED,
+                traceDt(thisUpdate), traceDt(nextUpdate)));
             return StageOutcome.of(CheckStatus.PASS).source(RevocationSource.CRL_FILE)
                 .validFrom(thisUpdate).validUntil(nextUpdate).build();
         } catch (Exception e) {

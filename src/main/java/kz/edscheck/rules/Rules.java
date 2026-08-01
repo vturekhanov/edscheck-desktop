@@ -207,7 +207,7 @@ public final class Rules {
 
     public static Check applyRevocationPeriod(
             Check check, StageOutcome outcome, Instant referenceTime, Instant checkTime,
-            PolicyProfile policy) {
+            Instant certNotAfter, PolicyProfile policy) {
         if (check.status() != CheckStatus.PASS || outcome == null) {
             return check;
         }
@@ -215,37 +215,60 @@ public final class Rules {
         String labelSource = isCrl
             ? Messages.get(MsgKey.RULES_REVOCATION_SOURCE_CRL)
             : Messages.get(MsgKey.RULES_REVOCATION_SOURCE_OCSP_RECEIPT);
-        Instant compareTime = isCrl ? checkTime : referenceTime;
 
-        Instant validFrom = outcome.validFrom();
-        if (validFrom == null) {
+        Instant thisUpdate = outcome.validFrom();
+        if (thisUpdate == null) {
             return new Check(Stage.REVOCATION, CheckStatus.FAIL,
                 Messages.get(MsgKey.RULES_REVOCATION_NO_THIS_UPDATE, labelSource),
                 null, check.source(), check.crlUrl(), null, null, null);
         }
+        Instant nextUpdate = outcome.validUntil();
 
-        Instant validUntil = outcome.validUntil();
-        if (validUntil == null) {
-            if (isCrl) {
-                return new Check(Stage.REVOCATION, CheckStatus.FAIL,
-                    Messages.get(MsgKey.RULES_REVOCATION_CRL_NO_NEXT_UPDATE),
-                    null, check.source(), check.crlUrl(), null, null, null);
-            }
-            if (policy.ocspMaxAge() == null) {
-                return check.withValidFrom(validFrom);
-            }
-            validUntil = validFrom.plus(policy.ocspMaxAge());
+        if (isCrl) {
+            return applyCrlPeriod(check, thisUpdate, nextUpdate, referenceTime, checkTime, certNotAfter);
         }
-        if (compareTime.isAfter(validUntil)) {
-            if (!isCrl) {
-
-                return ocspWindowFailCheck(check, validFrom);
+        if (nextUpdate == null) {
+            if (policy.ocspMaxAge() == null) {
+                return check.withValidFrom(thisUpdate);
             }
+            nextUpdate = thisUpdate.plus(policy.ocspMaxAge());
+        }
+        if (referenceTime.isAfter(nextUpdate)) {
+
+            return ocspWindowFailCheck(check, thisUpdate);
+        }
+        return check.withValidFrom(thisUpdate);
+    }
+
+    private static Check applyCrlPeriod(
+            Check check, Instant thisUpdate, Instant nextUpdate, Instant referenceTime,
+            Instant checkTime, Instant certNotAfter) {
+        if (nextUpdate == null) {
+            return new Check(Stage.REVOCATION, CheckStatus.FAIL,
+                Messages.get(MsgKey.RULES_REVOCATION_CRL_NO_NEXT_UPDATE),
+                null, check.source(), check.crlUrl(), null, null, null);
+        }
+        if (thisUpdate.isAfter(nextUpdate)) {
+            return new Check(Stage.REVOCATION, CheckStatus.FAIL,
+                Messages.get(MsgKey.RULES_REVOCATION_CRL_THIS_UPDATE_AFTER_NEXT_UPDATE),
+                null, check.source(), check.crlUrl(), null, null, null);
+        }
+        if (thisUpdate.isAfter(checkTime)) {
+            return new Check(Stage.REVOCATION, CheckStatus.FAIL,
+                Messages.get(MsgKey.RULES_REVOCATION_CRL_THIS_UPDATE_IN_FUTURE),
+                null, check.source(), check.crlUrl(), null, null, null);
+        }
+        if (certNotAfter != null && thisUpdate.isAfter(certNotAfter)) {
+            return new Check(Stage.REVOCATION, CheckStatus.FAIL,
+                Messages.get(MsgKey.RULES_REVOCATION_CRL_AFTER_CERT_EXPIRY),
+                null, check.source(), check.crlUrl(), null, null, null);
+        }
+        if (referenceTime.isAfter(nextUpdate)) {
             return new Check(Stage.REVOCATION, CheckStatus.FAIL,
                 Messages.get(MsgKey.RULES_REVOCATION_CRL_INVALID_NOW),
                 null, check.source(), check.crlUrl(), null, null, null);
         }
-        return check.withValidFrom(validFrom);
+        return check.withValidFrom(thisUpdate);
     }
 
     private static Check ocspWindowFailCheck(Check check, Instant thisUpdate) {
