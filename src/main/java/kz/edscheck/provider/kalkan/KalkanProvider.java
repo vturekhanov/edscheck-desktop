@@ -473,7 +473,7 @@ public final class KalkanProvider implements VerificationProvider {
                 trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_REVOCATION_PREFIX, noOcspNoCrl));
                 return new StageOutcome(CheckStatus.NOT_VERIFIED, noOcspNoCrl);
             }
-            return revocationByCrl(ps, signerCert, trust, containerCerts, crlPath);
+            return revocationByCrl(ps, signerCert, trust, containerCerts, refTime, ignoreTruststore, crlPath);
         }
         return revocationOcspOutcome(
             revAttr, signerCert, trust, containerCerts, refTime, ignoreTruststore, label(ps));
@@ -578,7 +578,8 @@ public final class KalkanProvider implements VerificationProvider {
 
     StageOutcome revocationByCrl(
             ParsedSigner ps, X509Certificate signerCert, List<X509Certificate> trust,
-            List<X509Certificate> containerCerts, String crlPath) {
+            List<X509Certificate> containerCerts, Instant refTime, boolean ignoreTruststore,
+            String crlPath) {
         try {
             CertificateFactory cf = CertificateFactory.getInstance("X.509", PROV);
             X509CRL crl;
@@ -605,6 +606,20 @@ public final class KalkanProvider implements VerificationProvider {
                     .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_SIGNATURE_FAILED, rootMessage(e))).build();
             }
             trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_SIGNATURE_OK, crlPath));
+            if (!crlSignOk(issuer)) {
+                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_NO_CRL_SIGN, crlPath));
+                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                    .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_NO_CRL_SIGN)).build();
+            }
+            try {
+                buildPath(issuer, containerCerts, trust, refTime, ignoreTruststore);
+            } catch (Exception e) {
+                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_CHAIN_FAILED,
+                    crlPath, rootMessage(e)));
+                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                    .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_CHAIN_FAILED, rootMessage(e))).build();
+            }
+            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_CHAIN_OK, crlPath));
             Instant thisUpdate = toInstant(crl.getThisUpdate());
             Instant nextUpdate = toInstant(crl.getNextUpdate());
             X509CRLEntry entry = crl.getRevokedCertificate(signerCert);
@@ -908,6 +923,11 @@ public final class KalkanProvider implements VerificationProvider {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    static boolean crlSignOk(X509Certificate cert) {
+        boolean[] ku = cert.getKeyUsage();
+        return ku == null || (ku.length > 6 && ku[6]);
     }
 
     private static Instant toInstant(Date d) {
