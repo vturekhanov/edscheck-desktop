@@ -34,8 +34,7 @@
 | macOS Apple Silicon | `EDScheck-X.Y.Z-macos-arm64.dmg` |
 | Linux x86-64 (Debian/Ubuntu и производные) | `edscheck_X.Y.Z_linux_amd64.deb` |
 | Linux arm64 (Debian/Ubuntu и производные) | `edscheck_X.Y.Z_linux_arm64.deb` |
-
-Для Windows приложение пока собирается только из исходников (см. ниже).
+| Windows x86-64 | `EDScheck-X.Y.Z-windows-x64.exe` |
 
 ### Установка готовой сборки
 
@@ -67,6 +66,12 @@ sudo apt install ./edscheck_X.Y.Z_linux_arm64.deb
 sudo apt remove edscheck
 ```
 
+#### Windows
+
+Скачайте `EDScheck-X.Y.Z-windows-x64.exe` и запустите. Установка не требует прав администратора — мастер установки ставит приложение только для текущего пользователя. Приложение подписано сертификатом для подписи кода.
+
+Удалить можно как обычное приложение Windows.
+
 ### Проверка подлинности дистрибутива
 
 > [!WARNING]
@@ -81,8 +86,9 @@ sudo apt remove edscheck
 Если работающего экземпляра приложения ещё нет, сверьте контрольную сумму (хэш): на странице релиза она показана рядом с каждым файлом (`sha256:…`, с кнопкой копирования).
 
 ```sh
-shasum -a 256 EDScheck-X.Y.Z-macos-arm64.dmg   # macOS
-sha256sum edscheck_X.Y.Z_linux_amd64.deb       # Linux
+shasum -a 256 EDScheck-X.Y.Z-macos-arm64.dmg               # macOS
+sha256sum edscheck_X.Y.Z_linux_amd64.deb                   # Linux
+certutil -hashfile EDScheck-X.Y.Z-windows-x64.exe SHA256   # Windows (cmd)
 ```
 
 ### Первый запуск
