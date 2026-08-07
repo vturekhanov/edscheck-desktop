@@ -114,6 +114,12 @@ final class AttachedSplitter {
                 Integer.toHexString(octetTlv.tagByte)));
         }
         streamOctetStringIntoOutput(in, octetTlv, out);
+        closeIfIndefinite(in, eContentWrapper);
+        closeIfIndefinite(in, encapTlv);
+
+        if (!encapTlv.indefinite && in.count() != encapLimit) {
+            throw new SplitFailedException(Messages.get(MsgKey.ATTACHED_SPLITTER_ENCAP_LENGTH_MISMATCH));
+        }
     }
 
     private static Split split(Counting in) throws IOException {

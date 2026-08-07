@@ -1,8 +1,8 @@
 package kz.edscheck.parsing;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -41,14 +41,14 @@ public final class ContentExtraction {
 
     @FunctionalInterface
     private interface IOWriter {
-        void write(OutputStream out) throws IOException;
+        void write(FileOutputStream out) throws IOException;
     }
 
     private static void writeAtomically(Path target, IOWriter writer) throws IOException {
         Path dir = target.toAbsolutePath().getParent();
         Path tmp = Files.createTempFile(dir, "eds-extract-", ".tmp");
         try {
-            try (OutputStream out = Files.newOutputStream(tmp)) {
+            try (FileOutputStream out = new FileOutputStream(tmp.toFile())) {
                 writer.write(out);
             }
             try {
@@ -61,12 +61,13 @@ public final class ContentExtraction {
         }
     }
 
-    private static void extractInto(DocumentSource source, OutputStream out) throws IOException {
+    private static void extractInto(DocumentSource source, FileOutputStream out) throws IOException {
         try {
             AttachedSplitter.tryExtract(source, out);
             return;
         } catch (AttachedSplitter.SplitFailedException e) {
 
+            out.getChannel().truncate(0);
         }
         byte[] bytes = readBounded(source, FALLBACK_MAX_BYTES);
         if (bytes == null) {
