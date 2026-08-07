@@ -14,7 +14,6 @@ import kz.edscheck.domain.VerificationRequest;
 import kz.edscheck.parsing.ParsedContainer;
 import kz.edscheck.parsing.ParsedSigner;
 import kz.edscheck.parsing.Parsing;
-import kz.edscheck.provider.CommonSigners;
 import kz.edscheck.provider.ProviderResult;
 import kz.edscheck.provider.SignerVerification;
 import kz.edscheck.provider.StageOutcome;
@@ -62,7 +61,7 @@ public final class FakeProvider implements VerificationProvider {
         ParsedContainer parsed = Parsing.parseContainer(container, trustCerts);
         List<SignerVerification> signers = new ArrayList<>();
         for (ParsedSigner ps : parsed.signers()) {
-            signers.add(ps.isForeign() ? CommonSigners.foreignSigner(ps) : signer(ps));
+            signers.add(signer(ps));
         }
         return new ProviderResult(parsed.encoding(), signers);
     }

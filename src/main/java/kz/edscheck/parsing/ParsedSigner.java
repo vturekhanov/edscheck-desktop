@@ -16,7 +16,6 @@ public record ParsedSigner(
         Instant tstGenTime,
         boolean hasTimestamp,
         boolean hasRevocationValues,
-        boolean isForeign,
         Boolean tsaTimestampingEkuOk,
         List<Certificate> chain,
         ArchiveTimestampInfo archive,

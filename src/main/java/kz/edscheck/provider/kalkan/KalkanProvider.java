@@ -148,15 +148,6 @@ public final class KalkanProvider implements VerificationProvider {
 
     private ProviderResult processParsed(
             VerificationRequest request, List<X509Certificate> trust, ParsedContainer parsed) {
-
-        if (parsed.signers().stream().anyMatch(ParsedSigner::isForeign)) {
-            List<SignerVerification> foreignSigners = new ArrayList<>();
-            for (ParsedSigner ps : parsed.signers()) {
-                foreignSigners.add(CommonSigners.foreignSigner(ps));
-            }
-            return new ProviderResult(parsed.encoding(), foreignSigners);
-        }
-
         boolean ignoreTruststore = request.ignoreTruststore();
         List<X509Certificate> containerCerts = parsed.containerCerts();
         String crlPath = request.trust().crls().isEmpty() ? null : request.trust().crls().get(0);

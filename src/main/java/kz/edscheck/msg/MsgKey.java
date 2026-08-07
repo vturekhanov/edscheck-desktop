@@ -177,7 +177,6 @@ public enum MsgKey {
     PROVIDER_LABEL_TSA_CERT_SUFFIX("provider.label_tsa_cert_suffix", 0),
     PROVIDER_TRACE_REVOCATION_PREFIX("provider.trace_revocation_prefix", 1),
 
-    COMMON_FOREIGN_SIGNATURE_DETAIL("common.foreign_signature_detail", 0),
     COMMON_UNRESOLVED_SIGNER_DETAIL("common.unresolved_signer_detail", 0),
 
     CONTAINER_READ_FAILED("container.read_failed", 1),

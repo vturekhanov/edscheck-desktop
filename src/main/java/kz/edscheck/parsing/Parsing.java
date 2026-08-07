@@ -69,8 +69,6 @@ public final class Parsing {
         new DERObjectIdentifier("1.2.840.113549.1.9.16.2.48");
     private static final DERObjectIdentifier OID_ARCHIVE_TS_V3 =
         new DERObjectIdentifier("0.4.0.1733.2.4");
-    private static final DERObjectIdentifier OID_DVCS_RECEIPT =
-        new DERObjectIdentifier("1.2.398.6.20.1.1.1.1");
 
     private static final DERObjectIdentifier OID_SIGNING_CERTIFICATE_V2 =
         new DERObjectIdentifier("1.2.840.113549.1.9.16.2.47");
@@ -253,7 +251,6 @@ public final class Parsing {
             Instant signingTime = signedAttrTime(si);
             TstInfo tst = timestampFromUnsigned(si);
             boolean hasRev = hasUnsignedAttr(si, OID_REVOCATION_VALUES);
-            boolean isForeign = hasUnsignedAttr(si, OID_DVCS_RECEIPT);
             EssBinding ess = signingCertificateBinding(si);
             ArchiveData archive = archiveData(si, containerCerts, sdContext);
             anyTs = anyTs || tst.present();
@@ -262,7 +259,7 @@ public final class Parsing {
 
             signers.add(new ParsedSigner(
                 index, certificate, keyUsage, signingTime, tst.genTime(), tst.present(),
-                hasRev, isForeign, tst.tsaEkuOk(), chain, archive.info(),
+                hasRev, tst.tsaEkuOk(), chain, archive.info(),
                 cert, ess.alg(), ess.hash(), tst.tsaCert(), tst.tsaCerts(), tst.tokenDer(),
                 si.getSignature(), tst.imprintAlg(), tst.imprintHash(), archive.marks(), si,
                 missingMandatoryBbAttrs(si.getSignedAttributes())));
@@ -395,7 +392,7 @@ public final class Parsing {
     private static ParsedSigner withIndex(ParsedSigner ps, int newIndex) {
         return new ParsedSigner(
             newIndex, ps.certificate(), ps.keyUsage(), ps.signingTime(), ps.tstGenTime(),
-            ps.hasTimestamp(), ps.hasRevocationValues(), ps.isForeign(), ps.tsaTimestampingEkuOk(),
+            ps.hasTimestamp(), ps.hasRevocationValues(), ps.tsaTimestampingEkuOk(),
             ps.chain(), ps.archive(), ps.signerCertRaw(), ps.signingCertHashAlg(), ps.signingCertHash(),
             ps.tsaCertRaw(), ps.tsaCertsRaw(), ps.tstTokenDer(), ps.signatureValue(),
             ps.tstImprintAlg(), ps.tstImprintHash(), ps.archiveMarks(), ps.signerInfo(),
