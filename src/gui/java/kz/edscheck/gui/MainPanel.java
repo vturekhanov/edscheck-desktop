@@ -596,6 +596,10 @@ public final class MainPanel extends JPanel {
         if (nonEmpty(signer.organization())) {
             panel.add(row(Messages.get(MsgKey.LABEL_ORGANIZATION), signer.organization()));
         }
+        String validity = certValidityText(signer.notBefore(), signer.notAfter());
+        if (!validity.isEmpty()) {
+            panel.add(row(Messages.get(MsgKey.LABEL_CERTIFICATE), validity));
+        }
         panel.add(row(Messages.get(MsgKey.LABEL_REFERENCE_TIME),
             fmtDt(sig.referenceTime().value()) + " (" + sig.referenceTimeSourceLabel() + ")"));
 
@@ -677,6 +681,19 @@ public final class MainPanel extends JPanel {
 
     private static String fmtDt(Instant value) {
         return value.atZone(ZoneId.systemDefault()).format(DT_FMT);
+    }
+
+    private static String certValidityText(Instant notBefore, Instant notAfter) {
+        if (notBefore != null && notAfter != null) {
+            return GuiMessages.get(GuiMsgKey.CERT_VALID_FROM_TO, fmtDt(notBefore), fmtDt(notAfter));
+        }
+        if (notAfter != null) {
+            return GuiMessages.get(GuiMsgKey.CERT_VALID_TO, fmtDt(notAfter));
+        }
+        if (notBefore != null) {
+            return GuiMessages.get(GuiMsgKey.CERT_VALID_FROM, fmtDt(notBefore));
+        }
+        return "";
     }
 
     static Kind verdictIcon(ResultViewModel.SignatureView sig) {

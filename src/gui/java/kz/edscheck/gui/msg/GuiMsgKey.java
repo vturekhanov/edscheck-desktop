@@ -10,6 +10,11 @@ public enum GuiMsgKey {
     STATUS_BUSY("status.busy", 0),
 
     EMPTY_STATE_HINT("empty_state.hint", 0),
+
+    CERT_VALID_FROM_TO("cert.valid_from_to", 2),
+    CERT_VALID_TO("cert.valid_to", 1),
+    CERT_VALID_FROM("cert.valid_from", 1),
+
     ERROR_TIMEOUT("error.timeout", 0),
     ERROR_GENERIC("error.generic", 1),
     LABEL_FILE("label.file", 0),
