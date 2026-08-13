@@ -211,7 +211,7 @@ public final class MainPanel extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (showingEmptyStateHint) {
-                    chooseButton.doClick();
+                    emptyStateClicked();
                 }
             }
         });
@@ -475,7 +475,7 @@ public final class MainPanel extends JPanel {
         MouseAdapter opener = new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                chooseButton.doClick();
+                emptyStateClicked();
             }
         };
         Component glueTop = Box.createVerticalGlue();
@@ -490,6 +490,14 @@ public final class MainPanel extends JPanel {
         resultsContainer.revalidate();
         resultsContainer.repaint();
         showingEmptyStateHint = true;
+    }
+
+    private void emptyStateClicked() {
+        emptyStateTarget().doClick();
+    }
+
+    JButton emptyStateTarget() {
+        return pendingContainer != null ? chooseDocumentButton : chooseButton;
     }
 
     void showError(String message) {
