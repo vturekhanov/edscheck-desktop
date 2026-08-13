@@ -46,6 +46,8 @@ public enum MsgKey {
     REV_SOURCE_CRL_FILE("rev_source.crl_file", 0),
     REV_SOURCE_CRL_REFERENCE("rev_source.crl_reference", 0),
 
+    CHECK_REVOCATION_NOT_VERIFIED("check.revocation_not_verified", 0),
+
     REVOCATION_REASON_UNSPECIFIED("revocation_reason.unspecified", 0),
     REVOCATION_REASON_KEY_COMPROMISE("revocation_reason.key_compromise", 0),
     REVOCATION_REASON_CA_COMPROMISE("revocation_reason.ca_compromise", 0),

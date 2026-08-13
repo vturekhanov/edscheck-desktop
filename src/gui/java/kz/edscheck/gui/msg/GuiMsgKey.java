@@ -8,6 +8,8 @@ public enum GuiMsgKey {
     FILE_CHOOSER_TITLE("file_chooser.title", 0),
     STATUS_IDLE("status.idle", 0),
     STATUS_BUSY("status.busy", 0),
+
+    EMPTY_STATE_HINT("empty_state.hint", 0),
     ERROR_TIMEOUT("error.timeout", 0),
     ERROR_GENERIC("error.generic", 1),
     LABEL_FILE("label.file", 0),

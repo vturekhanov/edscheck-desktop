@@ -81,7 +81,7 @@ public final class Rules {
                 return new CheckAndWarnings(
                     new Check(Stage.TIMESTAMP, CheckStatus.FAIL,
                         Messages.get(MsgKey.RULES_TIMESTAMP_TSA_NO_EKU),
-                        timestamp.genTime(), null, null, null, null, null),
+                        timestamp.genTime(), null, null, null, null),
                     warnings);
             }
 
@@ -89,12 +89,12 @@ public final class Rules {
                 return new CheckAndWarnings(
                     new Check(Stage.TIMESTAMP, CheckStatus.FAIL,
                         Messages.get(MsgKey.RULES_TIMESTAMP_TSA_OCSP_WINDOW),
-                        timestamp.genTime(), null, null, null, null, null),
+                        timestamp.genTime(), null, null, null, null),
                     warnings);
             }
             return new CheckAndWarnings(
                 new Check(Stage.TIMESTAMP, CheckStatus.PASS, null,
-                    timestamp.genTime(), null, null, null, null, null),
+                    timestamp.genTime(), null, null, null, null),
                 warnings);
         }
         return new CheckAndWarnings(
@@ -102,7 +102,7 @@ public final class Rules {
                 timestamp.detail() != null
                     ? timestamp.detail()
                     : Messages.get(MsgKey.RULES_TIMESTAMP_INVALID),
-                timestamp.genTime(), null, null, null, null, null),
+                timestamp.genTime(), null, null, null, null),
             warnings);
     }
 
@@ -158,12 +158,12 @@ public final class Rules {
             return new CheckAndWarnings(
                 new Check(Stage.ARCHIVE_TIMESTAMP, CheckStatus.NOT_VERIFIED,
                     Messages.get(MsgKey.RULES_ARCHIVE_TS_PROVIDER_UNSUPPORTED),
-                    info.genTime(), null, null, null, null, null),
+                    info.genTime(), null, null, null, null),
                 warnings);
         }
         return new CheckAndWarnings(
             new Check(Stage.ARCHIVE_TIMESTAMP, outcome.status(), outcome.detail(),
-                info.genTime(), null, null, null, null, null),
+                info.genTime(), null, null, null, null),
             warnings);
     }
 
@@ -220,7 +220,7 @@ public final class Rules {
         if (thisUpdate == null) {
             return new Check(Stage.REVOCATION, CheckStatus.FAIL,
                 Messages.get(MsgKey.RULES_REVOCATION_NO_THIS_UPDATE, labelSource),
-                null, check.source(), check.crlUrl(), null, null, null);
+                null, check.source(), null, null, null);
         }
         Instant nextUpdate = outcome.validUntil();
 
@@ -246,27 +246,27 @@ public final class Rules {
         if (nextUpdate == null) {
             return new Check(Stage.REVOCATION, CheckStatus.FAIL,
                 Messages.get(MsgKey.RULES_REVOCATION_CRL_NO_NEXT_UPDATE),
-                null, check.source(), check.crlUrl(), null, null, null);
+                null, check.source(), null, null, null);
         }
         if (thisUpdate.isAfter(nextUpdate)) {
             return new Check(Stage.REVOCATION, CheckStatus.FAIL,
                 Messages.get(MsgKey.RULES_REVOCATION_CRL_THIS_UPDATE_AFTER_NEXT_UPDATE),
-                null, check.source(), check.crlUrl(), null, null, null);
+                null, check.source(), null, null, null);
         }
         if (thisUpdate.isAfter(checkTime)) {
             return new Check(Stage.REVOCATION, CheckStatus.FAIL,
                 Messages.get(MsgKey.RULES_REVOCATION_CRL_THIS_UPDATE_IN_FUTURE),
-                null, check.source(), check.crlUrl(), null, null, null);
+                null, check.source(), null, null, null);
         }
         if (certNotAfter != null && thisUpdate.isAfter(certNotAfter)) {
             return new Check(Stage.REVOCATION, CheckStatus.FAIL,
                 Messages.get(MsgKey.RULES_REVOCATION_CRL_AFTER_CERT_EXPIRY),
-                null, check.source(), check.crlUrl(), null, null, null);
+                null, check.source(), null, null, null);
         }
         if (referenceTime.isAfter(nextUpdate)) {
             return new Check(Stage.REVOCATION, CheckStatus.FAIL,
                 Messages.get(MsgKey.RULES_REVOCATION_CRL_INVALID_NOW),
-                null, check.source(), check.crlUrl(), null, null, null);
+                null, check.source(), null, null, null);
         }
         return check.withValidFrom(thisUpdate);
     }
@@ -275,7 +275,7 @@ public final class Rules {
         return new Check(
             check.stage(), CheckStatus.FAIL,
             Messages.get(MsgKey.RULES_REVOCATION_OCSP_WINDOW_VIOLATED),
-            null, check.source(), check.crlUrl(), check.revokedAt(), check.revokedReason(),
+            null, check.source(), check.revokedAt(), check.revokedReason(),
             thisUpdate);
     }
 
@@ -354,6 +354,6 @@ public final class Rules {
 
     public static Check outcomeToCheck(Stage stage, StageOutcome outcome) {
         return new Check(stage, outcome.status(), outcome.detail(), null,
-            outcome.source(), outcome.crlUrl(), null, null, null);
+            outcome.source(), null, null, null);
     }
 }

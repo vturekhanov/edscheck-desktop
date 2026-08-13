@@ -13,7 +13,6 @@ public final class FakeScenario {
     public final CheckStatus chain;
     public final CheckStatus revocation;
     public final RevocationSource revocationSource;
-    public final String revocationCrlUrl;
     public final String revocationDetail;
     public final Instant revocationValidFrom;
     public final Instant revocationValidUntil;
@@ -30,7 +29,6 @@ public final class FakeScenario {
         this.chain = b.chain;
         this.revocation = b.revocation;
         this.revocationSource = b.revocationSource;
-        this.revocationCrlUrl = b.revocationCrlUrl;
         this.revocationDetail = b.revocationDetail;
         this.revocationValidFrom = b.revocationValidFrom;
         this.revocationValidUntil = b.revocationValidUntil;
@@ -55,7 +53,6 @@ public final class FakeScenario {
         private CheckStatus chain = CheckStatus.PASS;
         private CheckStatus revocation = CheckStatus.PASS;
         private RevocationSource revocationSource = RevocationSource.OCSP;
-        private String revocationCrlUrl;
         private String revocationDetail;
         private Instant revocationValidFrom = FAKE_REVOCATION_VALID_FROM;
         private Instant revocationValidUntil = FAKE_REVOCATION_VALID_UNTIL;
@@ -83,11 +80,6 @@ public final class FakeScenario {
 
         public Builder revocationSource(RevocationSource v) {
             this.revocationSource = v;
-            return this;
-        }
-
-        public Builder revocationCrlUrl(String v) {
-            this.revocationCrlUrl = v;
             return this;
         }
 

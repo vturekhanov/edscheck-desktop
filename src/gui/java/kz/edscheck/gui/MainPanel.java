@@ -36,6 +36,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
 import javax.swing.UIManager;
@@ -51,6 +52,7 @@ import kz.edscheck.domain.Certificate;
 import kz.edscheck.domain.CheckStatus;
 import kz.edscheck.domain.DocumentSource;
 import kz.edscheck.domain.Environment;
+import kz.edscheck.domain.Stage;
 import kz.edscheck.domain.Verdict;
 import kz.edscheck.errors.ContainerException;
 import kz.edscheck.errors.EdsCheckException;
@@ -156,6 +158,8 @@ public final class MainPanel extends JPanel {
 
     private File lastContainerFile;
 
+    private boolean showingEmptyStateHint;
+
     public MainPanel(CheckService checkService) {
         super(new BorderLayout(8, 8));
         this.checkService = checkService;
@@ -203,6 +207,15 @@ public final class MainPanel extends JPanel {
 
         resultsContainer.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
+        resultsContainer.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (showingEmptyStateHint) {
+                    chooseButton.doClick();
+                }
+            }
+        });
+
         footerPane = buildFooter();
 
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
@@ -211,6 +224,7 @@ public final class MainPanel extends JPanel {
         add(footerPane, BorderLayout.SOUTH);
 
         setTransferHandler(new FileDropHandler());
+        showEmptyStateHint();
     }
 
     private JLabel buildFooter() {
@@ -254,6 +268,10 @@ public final class MainPanel extends JPanel {
         if (aboutButton != null && aboutButton.getIcon() != null) {
             aboutButton.setIcon(aboutIcon());
         }
+
+        if (showingEmptyStateHint) {
+            showEmptyStateHint();
+        }
     }
 
     private void onChooseFile() {
@@ -268,6 +286,7 @@ public final class MainPanel extends JPanel {
     void handleSelectedContainer(File file) {
 
         clearResults();
+        showEmptyStateHint();
         if (isDetachedCades(peekBytes(file))) {
             pendingContainer = file;
             documentRow.setVisible(true);
@@ -446,9 +465,37 @@ public final class MainPanel extends JPanel {
         resultsContainer.repaint();
     }
 
+    private void showEmptyStateHint() {
+        resultsContainer.removeAll();
+        JLabel hint = new JLabel("<html>" + GuiMessages.get(GuiMsgKey.EMPTY_STATE_HINT) + "</html>");
+        hint.setHorizontalAlignment(SwingConstants.CENTER);
+        hint.setAlignmentX(Component.CENTER_ALIGNMENT);
+        hint.setForeground(UIManager.getColor("Label.disabledForeground"));
+
+        MouseAdapter opener = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                chooseButton.doClick();
+            }
+        };
+        Component glueTop = Box.createVerticalGlue();
+        Component glueBottom = Box.createVerticalGlue();
+        for (Component c : List.of(hint, glueTop, glueBottom)) {
+            c.addMouseListener(opener);
+        }
+
+        resultsContainer.add(glueTop);
+        resultsContainer.add(hint);
+        resultsContainer.add(glueBottom);
+        resultsContainer.revalidate();
+        resultsContainer.repaint();
+        showingEmptyStateHint = true;
+    }
+
     void showError(String message) {
         showIdle();
         clearResults();
+        showingEmptyStateHint = false;
         Font font = new JLabel().getFont();
         resultsContainer.add(iconRow(Kind.FAIL, message, COLOR_FAIL, font));
         resultsContainer.revalidate();
@@ -468,6 +515,7 @@ public final class MainPanel extends JPanel {
     }
 
     private void renderResult() {
+        showingEmptyStateHint = false;
         resultsContainer.removeAll();
         resultsContainer.add(headerPanel(currentModel));
         for (ResultViewModel.SignatureView sig : currentModel.signatures()) {
@@ -559,7 +607,16 @@ public final class MainPanel extends JPanel {
     private JComponent checkRow(ResultViewModel.CheckView check) {
         StringBuilder text = new StringBuilder(check.stageLabel());
         String detail = check.check().detail();
-        if (detail != null) {
+        if (check.check().stage() == Stage.REVOCATION) {
+
+            String source = check.sourceLabel() != null
+                ? check.sourceLabel()
+                : Messages.get(MsgKey.CHECK_REVOCATION_NOT_VERIFIED);
+            text.append(' ').append(source);
+            if (check.check().status() != CheckStatus.PASS && detail != null) {
+                text.append(" — ").append(detail);
+            }
+        } else if (detail != null) {
             text.append(" — ").append(detail);
         }
         if (check.check().online()) {

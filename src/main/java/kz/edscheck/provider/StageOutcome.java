@@ -8,27 +8,25 @@ public final class StageOutcome {
     private final CheckStatus status;
     private final String detail;
     private final RevocationSource source;
-    private final String crlUrl;
     private final Instant validFrom;
     private final Instant validUntil;
     private final Instant revokedAt;
     private final String revokedReason;
 
     public StageOutcome(CheckStatus status) {
-        this(status, null, null, null, null, null, null, null);
+        this(status, null, null, null, null, null, null);
     }
 
     public StageOutcome(CheckStatus status, String detail) {
-        this(status, detail, null, null, null, null, null, null);
+        this(status, detail, null, null, null, null, null);
     }
 
     public StageOutcome(
-            CheckStatus status, String detail, RevocationSource source, String crlUrl,
+            CheckStatus status, String detail, RevocationSource source,
             Instant validFrom, Instant validUntil, Instant revokedAt, String revokedReason) {
         this.status = status;
         this.detail = detail;
         this.source = source;
-        this.crlUrl = crlUrl;
         this.validFrom = validFrom;
         this.validUntil = validUntil;
         this.revokedAt = revokedAt;
@@ -45,10 +43,6 @@ public final class StageOutcome {
 
     public RevocationSource source() {
         return source;
-    }
-
-    public String crlUrl() {
-        return crlUrl;
     }
 
     public Instant validFrom() {
@@ -71,7 +65,6 @@ public final class StageOutcome {
         private final CheckStatus status;
         private String detail;
         private RevocationSource source;
-        private String crlUrl;
         private Instant validFrom;
         private Instant validUntil;
         private Instant revokedAt;
@@ -88,11 +81,6 @@ public final class StageOutcome {
 
         public Builder source(RevocationSource v) {
             this.source = v;
-            return this;
-        }
-
-        public Builder crlUrl(String v) {
-            this.crlUrl = v;
             return this;
         }
 
@@ -117,7 +105,7 @@ public final class StageOutcome {
         }
 
         public StageOutcome build() {
-            return new StageOutcome(status, detail, source, crlUrl, validFrom, validUntil,
+            return new StageOutcome(status, detail, source, validFrom, validUntil,
                 revokedAt, revokedReason);
         }
     }

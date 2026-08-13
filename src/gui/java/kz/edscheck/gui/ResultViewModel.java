@@ -142,7 +142,7 @@ public record ResultViewModel(
         Check normalized = Objects.equals(localizedDetail, check.detail())
             ? check
             : new Check(check.stage(), check.status(), localizedDetail, check.time(), check.source(),
-                check.crlUrl(), check.revokedAt(), check.revokedReason(), check.validFrom(), check.online());
+                check.revokedAt(), check.revokedReason(), check.validFrom(), check.online());
         return new CheckView(normalized, stageLabel, sourceLabel, revokedReasonLabel);
     }
 

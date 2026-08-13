@@ -8,37 +8,35 @@ public final class Check {
     private final String detail;
     private final Instant time;
     private final RevocationSource source;
-    private final String crlUrl;
     private final Instant revokedAt;
     private final String revokedReason;
     private final Instant validFrom;
     private final boolean online;
 
     public Check(Stage stage, CheckStatus status) {
-        this(stage, status, null, null, null, null, null, null, null);
+        this(stage, status, null, null, null, null, null, null);
     }
 
     public Check(Stage stage, CheckStatus status, String detail) {
-        this(stage, status, detail, null, null, null, null, null, null);
+        this(stage, status, detail, null, null, null, null, null);
     }
 
     public Check(
             Stage stage, CheckStatus status, String detail, Instant time,
-            RevocationSource source, String crlUrl, Instant revokedAt,
+            RevocationSource source, Instant revokedAt,
             String revokedReason, Instant validFrom) {
-        this(stage, status, detail, time, source, crlUrl, revokedAt, revokedReason, validFrom, false);
+        this(stage, status, detail, time, source, revokedAt, revokedReason, validFrom, false);
     }
 
     public Check(
             Stage stage, CheckStatus status, String detail, Instant time,
-            RevocationSource source, String crlUrl, Instant revokedAt,
+            RevocationSource source, Instant revokedAt,
             String revokedReason, Instant validFrom, boolean online) {
         this.stage = stage;
         this.status = status;
         this.detail = detail;
         this.time = time;
         this.source = source;
-        this.crlUrl = crlUrl;
         this.revokedAt = revokedAt;
         this.revokedReason = revokedReason;
         this.validFrom = validFrom;
@@ -65,10 +63,6 @@ public final class Check {
         return source;
     }
 
-    public String crlUrl() {
-        return crlUrl;
-    }
-
     public Instant revokedAt() {
         return revokedAt;
     }
@@ -86,17 +80,17 @@ public final class Check {
     }
 
     public Check withValidFrom(Instant newValidFrom) {
-        return new Check(stage, status, detail, time, source, crlUrl,
+        return new Check(stage, status, detail, time, source,
             revokedAt, revokedReason, newValidFrom, online);
     }
 
     public Check withRevokedAt(Instant newRevokedAt, String newRevokedReason) {
-        return new Check(stage, status, detail, time, source, crlUrl,
+        return new Check(stage, status, detail, time, source,
             newRevokedAt, newRevokedReason, validFrom, online);
     }
 
     public Check withOnline(boolean newOnline) {
-        return new Check(stage, status, detail, time, source, crlUrl,
+        return new Check(stage, status, detail, time, source,
             revokedAt, revokedReason, validFrom, newOnline);
     }
 }

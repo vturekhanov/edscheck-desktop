@@ -74,7 +74,6 @@ public final class FakeProvider implements VerificationProvider {
         outcomes.put(Stage.REVOCATION, StageOutcome.of(scenario.revocation)
             .detail(scenario.revocationDetail)
             .source(scenario.revocationSource)
-            .crlUrl(scenario.revocationCrlUrl)
             .validFrom(scenario.revocationValidFrom)
             .validUntil(scenario.revocationValidUntil)
             .build());
