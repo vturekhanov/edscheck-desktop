@@ -451,7 +451,7 @@ public final class Parsing {
         }
     }
 
-    private static List<Certificate> resolveChain(
+    public static List<Certificate> resolveChain(
             X509Certificate signerCert, Map<X500Principal, X509Certificate> bySubject) {
         if (signerCert == null) {
             return List.of();
@@ -472,7 +472,7 @@ public final class Parsing {
         return chain;
     }
 
-    private static Certificate certificateFields(X509Certificate cert) {
+    public static Certificate certificateFields(X509Certificate cert) {
         X509Name subject = x509Name(cert.getSubjectX500Principal());
         KeyUsageInfo ku = keyUsageInfo(cert);
 
@@ -663,7 +663,7 @@ public final class Parsing {
         }
     }
 
-    private static KeyUsageInfo keyUsageInfo(X509Certificate cert) {
+    public static KeyUsageInfo keyUsageInfo(X509Certificate cert) {
         Set<String> usages = new HashSet<>();
         boolean[] ku = cert.getKeyUsage();
         if (ku != null) {

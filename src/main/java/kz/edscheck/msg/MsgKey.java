@@ -308,7 +308,50 @@ public enum MsgKey {
     PARSING_CADES_LEVEL_LTA("parsing.cades_level_lta", 0),
     PARSING_CADES_LEVEL_LT("parsing.cades_level_lt", 0),
     PARSING_CADES_LEVEL_T("parsing.cades_level_t", 0),
-    PARSING_CADES_LEVEL_BB("parsing.cades_level_bb", 0);
+    PARSING_CADES_LEVEL_BB("parsing.cades_level_bb", 0),
+
+    XML_NOT_PARSED("xml.not_parsed", 1),
+    XML_NOT_RECOGNIZED("xml.not_recognized", 0),
+    XML_BATCH_ESF("xml.batch_esf", 1),
+
+    XML_CERTIFICATE_NOT_PARSED("xml.certificate_not_parsed", 1),
+
+    XML_TRANSFORM_NOT_SUPPORTED("xml.transform_not_supported", 1),
+    XML_DIGEST_ALGORITHM_NOT_SUPPORTED("xml.digest_algorithm_not_supported", 1),
+    XML_SIGNATURE_ALGORITHM_NOT_SUPPORTED("xml.signature_algorithm_not_supported", 1),
+    XML_CANONICALIZATION_NOT_SUPPORTED("xml.canonicalization_not_supported", 1),
+    XML_MANIFEST_NOT_SUPPORTED("xml.manifest_not_supported", 0),
+    XML_DUPLICATE_ID("xml.duplicate_id", 1),
+    XML_SIGNED_PROPERTIES_NOT_COVERED("xml.signed_properties_not_covered", 0),
+    XML_XPATH_FILTER2_NOT_SUPPORTED("xml.xpath_filter2_not_supported", 1),
+    XML_FILE_TOO_LARGE("xml.file_too_large", 1),
+
+    XML_SIGNING_CERT_DIGEST_ALGORITHM_UNKNOWN("xml.signing_cert_digest_algorithm_unknown", 1),
+    XML_SIGNING_CERT_MISMATCH("xml.signing_cert_mismatch", 0),
+
+    XML_ESF_SIGNATURE_ABSENT("xml.esf_signature_absent", 0),
+
+    XML_SIGNED_PROPERTIES_ABSENT("xml.signed_properties_absent", 0),
+    XML_SIGNED_PROPERTIES_MISSING_REQUIRED("xml.signed_properties_missing_required", 1),
+    XML_SIGNED_PROPERTIES_NOT_APPLICABLE("xml.signed_properties_not_applicable", 0),
+    XML_DETACHED_NO_DOCUMENT("xml.detached_no_document", 1),
+    XML_NO_CERTIFICATE("xml.no_certificate", 0),
+    XML_ESF_SIGNED_ATTRS_WARN("xml.esf_signed_attrs_warn", 0),
+
+    XML_STRUCTURE_NOT_XMLDSIG("xml.structure_not_xmldsig", 0),
+    XML_SIGNATURE_INVALID("xml.signature_invalid", 0),
+    XML_STAGE_SIGNED_PROPERTIES("xml.stage_signed_properties", 0),
+    XML_TRACE_SIGNED_PROPERTIES_PRESENT("xml.trace_signed_properties_present", 0),
+    XML_TRACE_SIGNED_PROPERTIES_MISSING("xml.trace_signed_properties_missing", 1),
+
+    XML_TRACE_SIGNING_CERT_V2_UNKNOWN_ALG("xml.trace_signing_cert_v2_unknown_alg", 1),
+    XML_TRACE_SIGNING_CERT_V2_MISMATCH("xml.trace_signing_cert_v2_mismatch", 1),
+    XML_TRACE_SIGNING_CERT_V2_MATCH("xml.trace_signing_cert_v2_match", 1),
+    XML_TRACE_SIGNING_CERT_V2_ERROR("xml.trace_signing_cert_v2_error", 1),
+
+    XML_CONTENT_EXTRACTION_NOTHING_TO_EXTRACT_DETACHED("xml.content_extraction_nothing_to_extract_detached", 0),
+    XML_CONTENT_EXTRACTION_NO_DOCUMENT_REFERENCE("xml.content_extraction_no_document_reference", 0),
+    XML_CONTENT_EXTRACTION_FAILED("xml.content_extraction_failed", 1);
 
     private final String key;
     private final int argCount;

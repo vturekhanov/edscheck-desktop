@@ -6,7 +6,7 @@ import kz.edscheck.domain.RevocationSource;
 
 public final class FakeScenario {
 
-    private static final Instant FAKE_REVOCATION_VALID_FROM = Instant.parse("2000-01-01T00:00:00Z");
+    static final Instant FAKE_REVOCATION_VALID_FROM_FALLBACK = Instant.parse("2000-01-01T00:00:00Z");
     private static final Instant FAKE_REVOCATION_VALID_UNTIL = Instant.parse("2100-01-01T00:00:00Z");
 
     public final CheckStatus integrity;
@@ -54,7 +54,8 @@ public final class FakeScenario {
         private CheckStatus revocation = CheckStatus.PASS;
         private RevocationSource revocationSource = RevocationSource.OCSP;
         private String revocationDetail;
-        private Instant revocationValidFrom = FAKE_REVOCATION_VALID_FROM;
+
+        private Instant revocationValidFrom;
         private Instant revocationValidUntil = FAKE_REVOCATION_VALID_UNTIL;
         private Boolean timestampPresent;
         private Boolean timestampValid;

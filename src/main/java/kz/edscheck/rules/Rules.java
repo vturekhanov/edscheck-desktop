@@ -290,19 +290,30 @@ public final class Rules {
         return new CheckAndWarnings(check.withRevokedAt(revokedAt, outcome.revokedReason()), List.of());
     }
 
+    private static final Duration OCSP_SIGNING_LOWER_BOUND = Duration.ofSeconds(10);
+
     public static Check applyOcspSigningWindow(
             Check check, StageOutcome outcome, Instant referenceTime, PolicyProfile policy) {
         if (outcome == null || check.source() != RevocationSource.OCSP) {
             return check;
         }
         Instant thisUpdate = outcome.validFrom();
-        if (thisUpdate == null || policy.ocspMaxAge() == null) {
+        if (thisUpdate == null) {
             return check;
         }
-        if (!ocspWindowViolated(thisUpdate, outcome.validUntil(), referenceTime, policy.ocspMaxAge())) {
-            return check;
+        if (policy.ddcard()) {
+            if (policy.ocspMaxAge() == null) {
+                return check;
+            }
+            if (!ocspWindowViolated(thisUpdate, outcome.validUntil(), referenceTime, policy.ocspMaxAge())) {
+                return check;
+            }
+            return ocspWindowFailCheck(check, thisUpdate);
         }
-        return ocspWindowFailCheck(check, thisUpdate);
+        if (thisUpdate.isBefore(referenceTime.minus(OCSP_SIGNING_LOWER_BOUND))) {
+            return ocspWindowFailCheck(check, thisUpdate);
+        }
+        return check;
     }
 
     public static Check decideKeyUsage(KeyUsageInfo keyUsage, PolicyProfile policy) {

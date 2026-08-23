@@ -17,6 +17,7 @@ import kz.edscheck.msg.MsgKey;
 import kz.edscheck.provider.VerificationProvider;
 import kz.edscheck.provider.fake.FakeProvider;
 import kz.edscheck.provider.kalkan.KalkanProvider;
+import kz.edscheck.rules.PolicyProfile;
 import kz.edscheck.trace.Trace;
 import kz.edscheck.trust.KalkanJar;
 import kz.edscheck.trust.KalkanJarException;
@@ -30,7 +31,8 @@ public final class Runner {
 
     public static RunResult run(RunnerParams params) throws KalkanJarException, LibraryJarException {
 
-        if (params.documentSource() == null && looksLikeDdcard(params.containerSource())) {
+        boolean ddcard = params.documentSource() == null && looksLikeDdcard(params.containerSource());
+        if (ddcard) {
             LibraryJars.verifyRuntime(LibraryJars.resolveDirFromSystemProperty());
         }
 
@@ -43,14 +45,15 @@ public final class Runner {
             Map.of(), params.ignoreTruststore());
 
         VerificationProvider provider = buildProvider(params.ca(), params.engine(), params.trace());
-        VerificationEngine engine = new VerificationEngine(provider);
+        PolicyProfile policy = ddcard ? PolicyProfile.ddcardPolicy() : PolicyProfile.ncaPolicy();
+        VerificationEngine engine = new VerificationEngine(provider, policy, params.trace(), params.xmlOnlineOcsp());
 
         SignedContainer result;
         if (params.documentSource() != null) {
 
             byte[] signatureBytes = readAllBytes(params.containerSource());
-            result = engine.verifyDetached(
-                request, params.documentSource(), List.of(signatureBytes), params.documentName());
+            result = engine.verifyWithDocument(
+                request, signatureBytes, params.documentSource(), params.documentName());
         } else {
             result = engine.verify(request, params.containerSource());
         }

@@ -734,11 +734,11 @@ public final class KalkanProvider implements VerificationProvider {
         }
     }
 
-    private record AnchorInfo(
+    public record AnchorInfo(
             boolean anchored, X509Certificate caCert, String detail, X500Principal signerIssuerName) {
     }
 
-    private static AnchorInfo resolveAnchor(
+    public static AnchorInfo resolveAnchor(
             X509Certificate signerCert, List<X509Certificate> containerCerts,
             List<X509Certificate> trust, boolean ignoreTruststore) {
         Set<String> trustedFps = new HashSet<>();
@@ -800,7 +800,7 @@ public final class KalkanProvider implements VerificationProvider {
         }
     }
 
-    private static void buildPath(
+    public static void buildPath(
             X509Certificate target, List<X509Certificate> containerCerts,
             List<X509Certificate> trust, Instant refTime, boolean ignoreTruststore) throws Exception {
         buildPath(target, containerCerts, trust, refTime == null ? null : Date.from(refTime), ignoreTruststore);
@@ -892,7 +892,7 @@ public final class KalkanProvider implements VerificationProvider {
         return out;
     }
 
-    private static X509Certificate findBySubject(
+    public static X509Certificate findBySubject(
             X500Principal subject, List<X509Certificate> a, List<X509Certificate> b) {
         for (X509Certificate c : a) {
             if (c.getSubjectX500Principal().equals(subject)) {
@@ -907,7 +907,7 @@ public final class KalkanProvider implements VerificationProvider {
         return null;
     }
 
-    private static boolean hasOcspSigning(X509Certificate cert) {
+    public static boolean hasOcspSigning(X509Certificate cert) {
         try {
             List<String> eku = cert.getExtendedKeyUsage();
             return eku != null && eku.contains(OID_OCSP_SIGNING);
@@ -916,16 +916,16 @@ public final class KalkanProvider implements VerificationProvider {
         }
     }
 
-    static boolean crlSignOk(X509Certificate cert) {
+    public static boolean crlSignOk(X509Certificate cert) {
         boolean[] ku = cert.getKeyUsage();
         return ku == null || (ku.length > 6 && ku[6]);
     }
 
-    private static Instant toInstant(Date d) {
+    public static Instant toInstant(Date d) {
         return d == null ? null : d.toInstant();
     }
 
-    private static String reasonLabel(int code) {
+    public static String reasonLabel(int code) {
         switch (code) {
             case 0: return "unspecified";
             case 1: return "key_compromise";

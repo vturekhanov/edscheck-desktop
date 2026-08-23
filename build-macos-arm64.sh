@@ -88,7 +88,7 @@ if [ -z "$APP_VERSION" ]; then
     exit 1
 fi
 
-RUNTIME_LIB_JARS="flatlaf-3.7.2-no-natives.jar pdfbox-3.0.7.jar pdfbox-io-3.0.7.jar commons-logging-1.4.0.jar"
+RUNTIME_LIB_JARS="flatlaf-3.7.2-no-natives.jar pdfbox-3.0.7.jar pdfbox-io-3.0.7.jar commons-logging-1.4.0.jar xmlsec-3.0.3.jar slf4j-api-2.0.9.jar slf4j-nop-2.0.9.jar"
 FLATLAF_NATIVE="flatlaf-3.7.2-macos-arm64.dylib"
 
 BUILD_DIR="$REPO_ROOT/build/gui/jpackage"
@@ -101,7 +101,7 @@ DIST_DIR="$REPO_ROOT/dist"
 rm -rf "$RUNTIME_DIR" "$INPUT_DIR" "$ICONSET_DIR" "$ICNS_FILE"
 mkdir -p "$INPUT_DIR" "$DIST_DIR"
 
-MODULES="java.base,java.desktop,java.instrument,java.logging,java.net.http,jdk.crypto.ec"
+MODULES="java.base,java.desktop,java.instrument,java.logging,java.net.http,jdk.crypto.ec,java.xml.crypto"
 
 CP_FOR_JDEPS=""
 for name in $RUNTIME_LIB_JARS; do

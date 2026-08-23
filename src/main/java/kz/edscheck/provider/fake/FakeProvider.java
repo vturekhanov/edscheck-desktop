@@ -68,13 +68,14 @@ public final class FakeProvider implements VerificationProvider {
 
     private SignerVerification signer(ParsedSigner ps) {
         FakeScenario scenario = scenarios.getOrDefault(ps.index(), defaultScenario);
+        TimestampInfo timestampInfo = timestamp(ps, scenario);
         Map<Stage, StageOutcome> outcomes = new EnumMap<>(Stage.class);
         outcomes.put(Stage.INTEGRITY, new StageOutcome(scenario.integrity));
         outcomes.put(Stage.CHAIN, new StageOutcome(scenario.chain));
         outcomes.put(Stage.REVOCATION, StageOutcome.of(scenario.revocation)
             .detail(scenario.revocationDetail)
             .source(scenario.revocationSource)
-            .validFrom(scenario.revocationValidFrom)
+            .validFrom(revocationValidFrom(scenario, timestampInfo))
             .validUntil(scenario.revocationValidUntil)
             .build());
 
@@ -83,8 +84,17 @@ public final class FakeProvider implements VerificationProvider {
             outcomes.put(Stage.ARCHIVE_TIMESTAMP, new StageOutcome(status, scenario.archiveDetail));
         }
         return new SignerVerification(
-            ps.index(), ps.certificate(), ps.keyUsage(), timestamp(ps, scenario),
+            ps.index(), ps.certificate(), ps.keyUsage(), timestampInfo,
             ps.archive(), outcomes, ps.chain(), List.of(), ps.missingBbAttrs());
+    }
+
+    private static Instant revocationValidFrom(FakeScenario scenario, TimestampInfo timestampInfo) {
+        if (scenario.revocationValidFrom != null) {
+            return scenario.revocationValidFrom;
+        }
+        return timestampInfo.genTime() != null
+            ? timestampInfo.genTime()
+            : FakeScenario.FAKE_REVOCATION_VALID_FROM_FALLBACK;
     }
 
     private TimestampInfo timestamp(ParsedSigner ps, FakeScenario scenario) {

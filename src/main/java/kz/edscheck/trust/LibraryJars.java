@@ -25,7 +25,14 @@ public final class LibraryJars {
         "d175dbd751dd782a63bde28c7a039520e971f25e84b79c19b8435edc3603e0dc",
 
         "flatlaf-3.7.2-no-natives.jar",
-        "1ce575b402951759ac523e050038bb39b44445a5f1e27544f3d4c61013e3c3a4");
+        "1ce575b402951759ac523e050038bb39b44445a5f1e27544f3d4c61013e3c3a4",
+
+        "xmlsec-3.0.3.jar",
+        "b23df0b77125345f549374a85ca93c74e09d548a6c92858923b9fd9a24d5188b",
+        "slf4j-api-2.0.9.jar",
+        "0818930dc8d7debb403204611691da58e49d42c50b6ffcfdce02dadb7c3c2b6c",
+        "slf4j-nop-2.0.9.jar",
+        "5612367b12bac3eacf4e6ff4e06ce5ba1c83c4d8d6d5e2ea5f924635717a6d83");
 
     private static final Map<String, String> TEST_ONLY_PINS = Map.of(
         "junit-platform-console-standalone-6.1.1.jar",

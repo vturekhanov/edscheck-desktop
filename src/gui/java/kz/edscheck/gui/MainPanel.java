@@ -3,12 +3,16 @@ package kz.edscheck.gui;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Desktop;
+import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
+import java.awt.Window;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.MouseAdapter;
@@ -16,6 +20,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -31,11 +36,15 @@ import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JViewport;
+import javax.swing.Scrollable;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.TransferHandler;
@@ -66,6 +75,9 @@ import kz.edscheck.trace.Trace;
 import kz.edscheck.trust.KalkanJarException;
 import kz.edscheck.trust.LibraryJarException;
 import kz.edscheck.trust.LibraryJars;
+import kz.edscheck.xml.XmlContentExtraction;
+import kz.edscheck.xml.XmlDetect;
+import kz.edscheck.xml.XmlExtractionPlan;
 
 public final class MainPanel extends JPanel {
 
@@ -139,13 +151,20 @@ public final class MainPanel extends JPanel {
 
     private static final long DETECT_PEEK_MAX_BYTES = 500L * 1024 * 1024;
 
+    private static final Set<String> EXTRACTABLE_CONTAINER_FORMATS =
+        Set.of("cms", "ddcard", "xades", "xmldsig", "xmlesf");
+
+    private static final Set<String> SHOWABLE_CONTAINER_FORMATS = Set.of("xades", "xmldsig", "xmlesf");
+
+    private static final int SIGNED_CONTENT_MAX_CHARACTERS = 100_000;
+
     private final CheckService checkService;
     final JButton chooseButton;
     final JLabel statusLabel;
     final JProgressBar busyIndicator;
     final JButton chooseDocumentButton;
     final JButton cancelDocumentButton;
-    final JPanel resultsContainer;
+    final ResultsContainer resultsContainer;
     final JLabel footerPane;
 
     final JButton aboutButton;
@@ -202,8 +221,7 @@ public final class MainPanel extends JPanel {
         north.add(top);
         north.add(documentRow);
 
-        resultsContainer = new JPanel();
-        resultsContainer.setLayout(new BoxLayout(resultsContainer, BoxLayout.Y_AXIS));
+        resultsContainer = new ResultsContainer();
 
         resultsContainer.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
@@ -287,7 +305,7 @@ public final class MainPanel extends JPanel {
 
         clearResults();
         showEmptyStateHint();
-        if (isDetachedCades(peekBytes(file))) {
+        if (isDetachedContainer(peekBytes(file))) {
             pendingContainer = file;
             documentRow.setVisible(true);
             statusLabel.setText(GuiMessages.get(GuiMsgKey.STATUS_AWAITING_DOCUMENT));
@@ -325,9 +343,17 @@ public final class MainPanel extends JPanel {
         statusLabel.setText(GuiMessages.get(GuiMsgKey.STATUS_IDLE));
     }
 
+    private static boolean isDetachedContainer(byte[] bytes) {
+        return isDetachedCades(bytes) || isDetachedXml(bytes);
+    }
+
     private static boolean isDetachedCades(byte[] bytes) {
         return bytes.length > 0 && bytes[0] == 0x30
             && ContainerFormat.looksLikeCades(bytes) && !ContainerFormat.isAttached(bytes);
+    }
+
+    private static boolean isDetachedXml(byte[] bytes) {
+        return XmlDetect.looksLikeXml(bytes) && XmlDetect.looksLikeDetached(bytes);
     }
 
     private static byte[] peekBytes(File file) {
@@ -382,26 +408,33 @@ public final class MainPanel extends JPanel {
         return GuiMessages.get(GuiMsgKey.ERROR_UNEXPECTED, detail);
     }
 
-    private void onExtractDocument(boolean ddcard) {
+    private void onExtractDocument(String containerFormat) {
         File container = lastContainerFile;
         if (container == null) {
             return;
         }
         String defaultName;
-        DdcardContent ddcardContent = null;
-        if (ddcard) {
-            try {
+
+        DocumentSource materialized = null;
+        try {
+            if ("ddcard".equals(containerFormat)) {
                 LibraryJars.verifyRuntime(LibraryJars.resolveDirFromSystemProperty());
                 byte[] raw = Files.readAllBytes(container.toPath());
-                ddcardContent = Ddcard.parseDdcard(raw);
-            } catch (Exception e) {
-                showExtractError(e);
-                return;
+                DdcardContent ddcardContent = Ddcard.parseDdcard(raw);
+                defaultName = ContentExtraction.sanitizeBasename(ddcardContent.documentName());
+                materialized = ddcardContent.document();
+            } else if (SHOWABLE_CONTAINER_FORMATS.contains(containerFormat)) {
+                byte[] raw = Files.readAllBytes(container.toPath());
+                XmlExtractionPlan plan = XmlContentExtraction.plan(raw, container.getName());
+                defaultName = plan.defaultFileName();
+                materialized = DocumentSource.ofBytes(plan.document());
+            } else {
+                String byExtension = ContentExtraction.defaultAttachedName(container.toPath());
+                defaultName = byExtension != null ? byExtension : container.getName();
             }
-            defaultName = ContentExtraction.sanitizeBasename(ddcardContent.documentName());
-        } else {
-            String byExtension = ContentExtraction.defaultAttachedName(container.toPath());
-            defaultName = byExtension != null ? byExtension : container.getName();
+        } catch (Exception e) {
+            showExtractError(e);
+            return;
         }
 
         SystemFileChooser chooser = new SystemFileChooser();
@@ -414,12 +447,12 @@ public final class MainPanel extends JPanel {
         Path target = chooser.getSelectedFile().toPath();
 
         chooseButton.setEnabled(false);
-        DdcardContent finalDdcardContent = ddcardContent;
+        DocumentSource finalMaterialized = materialized;
         new Thread(() -> {
             Throwable error = null;
             try {
-                if (finalDdcardContent != null) {
-                    ContentExtraction.copyAtomically(finalDdcardContent.document(), target);
+                if (finalMaterialized != null) {
+                    ContentExtraction.copyAtomically(finalMaterialized, target);
                 } else {
                     ContentExtraction.extract(DocumentSource.ofFile(container.toPath()), target);
                 }
@@ -437,6 +470,75 @@ public final class MainPanel extends JPanel {
                 }
             });
         }, "gui-extract").start();
+    }
+
+    private void onShowSignedContent(String containerFormat) {
+        File container = lastContainerFile;
+        if (container == null) {
+            return;
+        }
+        XmlExtractionPlan plan;
+        try {
+            byte[] raw = Files.readAllBytes(container.toPath());
+            plan = XmlContentExtraction.plan(raw, container.getName());
+        } catch (Exception e) {
+            showExtractError(e);
+            return;
+        }
+        String full = new String(plan.document(), StandardCharsets.UTF_8);
+        boolean truncated = full.length() > SIGNED_CONTENT_MAX_CHARACTERS;
+        String text = truncated ? full.substring(0, SIGNED_CONTENT_MAX_CHARACTERS) : full;
+        showSignedContentDialog(text, truncated, containerFormat);
+    }
+
+    private void showSignedContentDialog(String text, boolean truncated, String containerFormat) {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new JDialog(owner, GuiMessages.get(GuiMsgKey.WINDOW_TITLE), Dialog.ModalityType.APPLICATION_MODAL);
+
+        JLabel title = new JLabel(GuiMessages.get(GuiMsgKey.SIGNED_CONTENT_TITLE));
+        title.setFont(title.getFont().deriveFont(Font.BOLD));
+        title.setBorder(BorderFactory.createEmptyBorder(12, 12, 8, 12));
+
+        JTextArea textArea = new JTextArea(text);
+        textArea.setEditable(false);
+        textArea.setLineWrap(true);
+        textArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, textArea.getFont().getSize()));
+        textArea.setCaretPosition(0);
+        JScrollPane scrollPane = new JScrollPane(textArea);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
+
+        JPanel bottom = new VerticalPanel();
+        bottom.setBorder(BorderFactory.createEmptyBorder(8, 12, 12, 12));
+        if (truncated) {
+            JLabel truncatedLabel = new JLabel(
+                GuiMessages.get(GuiMsgKey.SIGNED_CONTENT_TRUNCATED, SIGNED_CONTENT_MAX_CHARACTERS));
+            truncatedLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            truncatedLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+            bottom.add(truncatedLabel);
+        }
+        JPanel buttonsRow = new JPanel(new BorderLayout());
+        buttonsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JButton closeButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_CLOSE));
+        closeButton.addActionListener(e -> dialog.dispose());
+        JButton extractButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_EXTRACT_DOCUMENT));
+        extractButton.addActionListener(e -> {
+            dialog.dispose();
+            onExtractDocument(containerFormat);
+        });
+        buttonsRow.add(closeButton, BorderLayout.WEST);
+        buttonsRow.add(extractButton, BorderLayout.EAST);
+        bottom.add(buttonsRow);
+
+        JPanel content = new JPanel(new BorderLayout());
+        content.add(title, BorderLayout.NORTH);
+        content.add(scrollPane, BorderLayout.CENTER);
+        content.add(bottom, BorderLayout.SOUTH);
+
+        dialog.getRootPane().setDefaultButton(closeButton);
+        dialog.setContentPane(content);
+        dialog.setSize(600, 450);
+        dialog.setLocationRelativeTo(owner);
+        dialog.setVisible(true);
     }
 
     private void showExtractError(Throwable cause) {
@@ -467,7 +569,8 @@ public final class MainPanel extends JPanel {
 
     private void showEmptyStateHint() {
         resultsContainer.removeAll();
-        JLabel hint = new JLabel("<html>" + GuiMessages.get(GuiMsgKey.EMPTY_STATE_HINT) + "</html>");
+        JLabel hint = new JLabel("<html><div style=\"text-align:center\">"
+            + GuiMessages.get(GuiMsgKey.EMPTY_STATE_HINT) + "</div></html>");
         hint.setHorizontalAlignment(SwingConstants.CENTER);
         hint.setAlignmentX(Component.CENTER_ALIGNMENT);
         hint.setForeground(UIManager.getColor("Label.disabledForeground"));
@@ -548,10 +651,18 @@ public final class MainPanel extends JPanel {
         JPanel actionsRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         actionsRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         actionsRow.add(toggle);
-        if ("cms".equals(model.containerFormat()) || "ddcard".equals(model.containerFormat())) {
-            JButton extractButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_EXTRACT_DOCUMENT));
-            extractButton.addActionListener(e -> onExtractDocument("ddcard".equals(model.containerFormat())));
-            actionsRow.add(extractButton);
+        if (EXTRACTABLE_CONTAINER_FORMATS.contains(model.containerFormat())) {
+            boolean showable = SHOWABLE_CONTAINER_FORMATS.contains(model.containerFormat());
+            JButton actionButton = new JButton(GuiMessages.get(
+                showable ? GuiMsgKey.BUTTON_SHOW_DOCUMENT : GuiMsgKey.BUTTON_EXTRACT_DOCUMENT));
+            actionButton.addActionListener(e -> {
+                if (showable) {
+                    onShowSignedContent(model.containerFormat());
+                } else {
+                    onExtractDocument(model.containerFormat());
+                }
+            });
+            actionsRow.add(actionButton);
         }
 
         actionsRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, actionsRow.getPreferredSize().height));
@@ -649,19 +760,26 @@ public final class MainPanel extends JPanel {
         } else {
             iconLabel = new JLabel(iconFor(kind, iconSize));
         }
-        JLabel textLabel = new JLabel(text);
+        JLabel textLabel = new JLabel("<html>" + escapeHtml(text) + "</html>");
         textLabel.setFont(textFont);
         if (color != null) {
             textLabel.setForeground(color);
         }
 
-        Box box = Box.createHorizontalBox();
+        iconLabel.setAlignmentY(Component.TOP_ALIGNMENT);
+        textLabel.setAlignmentY(Component.TOP_ALIGNMENT);
+
+        Box box = new Box(BoxLayout.X_AXIS) {
+
+            @Override
+            public Dimension getMaximumSize() {
+                return new Dimension(Integer.MAX_VALUE, getPreferredSize().height);
+            }
+        };
         box.setAlignmentX(Component.LEFT_ALIGNMENT);
         box.add(iconLabel);
         box.add(Box.createHorizontalStrut(6));
         box.add(textLabel);
-
-        box.setMaximumSize(new Dimension(Integer.MAX_VALUE, box.getPreferredSize().height));
         return box;
     }
 
@@ -732,6 +850,41 @@ public final class MainPanel extends JPanel {
         VerticalPanel() {
             setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
             setAlignmentX(Component.LEFT_ALIGNMENT);
+        }
+    }
+
+    static final class ResultsContainer extends JPanel implements Scrollable {
+        ResultsContainer() {
+            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return orientation == SwingConstants.VERTICAL ? visibleRect.height : visibleRect.width;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            Container parent = getParent();
+            if (!(parent instanceof JViewport viewport)) {
+                return false;
+            }
+            return viewport.getHeight() > getPreferredSize().height;
         }
     }
 

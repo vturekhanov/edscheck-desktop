@@ -39,6 +39,11 @@ public enum GuiMsgKey {
     EXTRACT_CHOOSER_TITLE("extract_chooser.title", 0),
     EXTRACT_SUCCESS("extract.success", 1),
 
+    BUTTON_SHOW_DOCUMENT("button.show_document", 0),
+    SIGNED_CONTENT_TITLE("signed_content.title", 0),
+    SIGNED_CONTENT_TRUNCATED("signed_content.truncated", 1),
+    BUTTON_CLOSE("button.close", 0),
+
     GLYPH_GENUINE("glyph.genuine", 0),
     GLYPH_GENUINE_WARNINGS("glyph.genuine_warnings", 0),
     GLYPH_INVALID("glyph.invalid", 0),

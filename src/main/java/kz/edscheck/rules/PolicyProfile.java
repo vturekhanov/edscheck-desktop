@@ -13,36 +13,43 @@ public final class PolicyProfile {
 
     private final boolean requireBbAttrs;
 
+    private final boolean ddcard;
+
     public PolicyProfile() {
-        this(false, Set.of(), false, true, Duration.ofMinutes(5), false);
+        this(false, Set.of(), false, true, Duration.ofMinutes(5), false, false);
     }
 
     public PolicyProfile(
             boolean requireTimestamp, Set<String> allowedKeyAlgorithms,
             boolean enforcePolicyOids, boolean requireNonRepudiation, Duration ocspMaxAge,
-            boolean requireBbAttrs) {
+            boolean requireBbAttrs, boolean ddcard) {
         this.requireTimestamp = requireTimestamp;
         this.allowedKeyAlgorithms = allowedKeyAlgorithms == null ? Set.of() : Set.copyOf(allowedKeyAlgorithms);
         this.enforcePolicyOids = enforcePolicyOids;
         this.requireNonRepudiation = requireNonRepudiation;
         this.ocspMaxAge = ocspMaxAge;
         this.requireBbAttrs = requireBbAttrs;
+        this.ddcard = ddcard;
     }
 
     public static PolicyProfile withOcspMaxAge(Duration ocspMaxAge) {
-        return new PolicyProfile(false, Set.of(), false, true, ocspMaxAge, false);
+        return new PolicyProfile(false, Set.of(), false, true, ocspMaxAge, false, false);
     }
 
     public static PolicyProfile withRequireTimestamp(boolean requireTimestamp) {
-        return new PolicyProfile(requireTimestamp, Set.of(), false, true, Duration.ofMinutes(5), false);
+        return new PolicyProfile(requireTimestamp, Set.of(), false, true, Duration.ofMinutes(5), false, false);
     }
 
     public static PolicyProfile withRequireBbAttrs(boolean requireBbAttrs) {
-        return new PolicyProfile(false, Set.of(), false, true, Duration.ofMinutes(5), requireBbAttrs);
+        return new PolicyProfile(false, Set.of(), false, true, Duration.ofMinutes(5), requireBbAttrs, false);
     }
 
     public static PolicyProfile ncaPolicy() {
         return new PolicyProfile();
+    }
+
+    public static PolicyProfile ddcardPolicy() {
+        return new PolicyProfile(false, Set.of(), false, true, Duration.ofMinutes(5), false, true);
     }
 
     public boolean requireTimestamp() {
@@ -67,5 +74,9 @@ public final class PolicyProfile {
 
     public Duration ocspMaxAge() {
         return ocspMaxAge;
+    }
+
+    public boolean ddcard() {
+        return ddcard;
     }
 }
