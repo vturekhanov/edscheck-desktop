@@ -16,7 +16,6 @@ import kz.edscheck.domain.Encoding;
 import kz.edscheck.domain.SignedContainer;
 import kz.edscheck.domain.Signature;
 import kz.edscheck.domain.Stage;
-import kz.edscheck.domain.TimeSource;
 import kz.edscheck.domain.VerificationRequest;
 import kz.edscheck.errors.ContainerException;
 import kz.edscheck.msg.Messages;
@@ -227,10 +226,8 @@ public final class VerificationEngine {
             revocation, revocationOutcome, referenceTime.value(), Instant.now(),
             sv.certificate().notAfter(), policy);
 
-        if (referenceTime.source() == TimeSource.TIMESTAMP) {
-            revocation = Rules.applyOcspSigningWindow(
-                revocation, revocationOutcome, referenceTime.value(), policy);
-        }
+        revocation = Rules.applyOcspSigningWindow(
+            revocation, revocationOutcome, referenceTime.value(), policy);
 
         Rules.CheckAndWarnings archiveResult = Rules.archiveTimestampCheck(
             sv.archive(), sv.outcomes().get(Stage.ARCHIVE_TIMESTAMP));

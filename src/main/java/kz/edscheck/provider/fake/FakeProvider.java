@@ -92,9 +92,7 @@ public final class FakeProvider implements VerificationProvider {
         if (scenario.revocationValidFrom != null) {
             return scenario.revocationValidFrom;
         }
-        return timestampInfo.genTime() != null
-            ? timestampInfo.genTime()
-            : FakeScenario.FAKE_REVOCATION_VALID_FROM_FALLBACK;
+        return timestampInfo.genTime() != null ? timestampInfo.genTime() : Instant.now();
     }
 
     private TimestampInfo timestamp(ParsedSigner ps, FakeScenario scenario) {
