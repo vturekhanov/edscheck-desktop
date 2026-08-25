@@ -67,7 +67,7 @@ final class EsfSignatureAssembler {
 
         outcomes.put(Stage.REVOCATION, signerCert == null
             ? new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE))
-            : XmlCrypto.verifyEmbeddedOcsp(onlineOcsp == null ? List.of() : List.of(onlineOcsp), crlPath,
+            : XmlCrypto.verifyEmbeddedOcsp(onlineOcsp == null ? List.of() : List.of(onlineOcsp), List.of(), crlPath,
                 signerCert, trust, List.of(signerCert), refTime, ignoreTruststore, trace, label));
 
         KeyUsageInfo keyUsage = signerCert == null ? new KeyUsageInfo() : Parsing.keyUsageInfo(signerCert);

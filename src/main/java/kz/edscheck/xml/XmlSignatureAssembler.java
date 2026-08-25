@@ -94,8 +94,8 @@ final class XmlSignatureAssembler {
 
         outcomes.put(Stage.REVOCATION, signerCert == null
             ? new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE))
-            : XmlCrypto.verifyEmbeddedOcsp(ocspValuesWithOnline(ps, onlineOcsp), crlPath, signerCert, trust,
-                containerCerts, refTime, ignoreTruststore, trace, label));
+            : XmlCrypto.verifyEmbeddedOcsp(ocspValuesWithOnline(ps, onlineOcsp), ps.crlValues(), crlPath, signerCert,
+                trust, containerCerts, refTime, ignoreTruststore, trace, label));
 
         KeyUsageInfo keyUsage = signerCert == null ? new KeyUsageInfo() : Parsing.keyUsageInfo(signerCert);
 

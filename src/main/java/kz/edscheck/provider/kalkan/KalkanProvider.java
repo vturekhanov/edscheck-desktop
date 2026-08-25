@@ -456,7 +456,7 @@ public final class KalkanProvider implements VerificationProvider {
         return !ref.isBefore(notBefore) && !ref.isAfter(notAfter);
     }
 
-    private StageOutcome revocationOutcome(
+    StageOutcome revocationOutcome(
             ParsedSigner ps, X509Certificate signerCert, List<X509Certificate> containerCerts,
             List<X509Certificate> trust, Instant refTime, String crlPath, boolean ignoreTruststore) {
         AttributeTable ut = ps.signerInfo().getUnsignedAttributes();
@@ -473,7 +473,10 @@ public final class KalkanProvider implements VerificationProvider {
                         ignoreTruststore, RevocationSource.CRL_EMBEDDED, label(ps),
                         Messages.get(MsgKey.PROVIDER_CRL_EMBEDDED_LABEL));
                 }
+
                 trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_EMBEDDED_NO_MATCH));
+                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_EMBEDDED)
+                    .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_MISMATCH)).build();
             }
         }
         if (crlPath == null) {
