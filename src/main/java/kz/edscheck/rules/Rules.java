@@ -211,7 +211,9 @@ public final class Rules {
         if (check.status() != CheckStatus.PASS || outcome == null) {
             return check;
         }
-        boolean isCrl = check.source() == RevocationSource.CRL_FILE;
+
+        boolean isCrl = check.source() == RevocationSource.CRL_FILE
+            || check.source() == RevocationSource.CRL_EMBEDDED;
         String labelSource = isCrl
             ? Messages.get(MsgKey.RULES_REVOCATION_SOURCE_CRL)
             : Messages.get(MsgKey.RULES_REVOCATION_SOURCE_OCSP_RECEIPT);

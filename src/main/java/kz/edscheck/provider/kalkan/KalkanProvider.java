@@ -88,6 +88,9 @@ public final class KalkanProvider implements VerificationProvider {
         new DERObjectIdentifier("1.2.840.113549.1.9.16.2.24");
     private static final String OID_OCSP_SIGNING = "1.3.6.1.5.5.7.3.9";
 
+    private static final int TAG_CRL_VALS = 0;
+    private static final int TAG_OCSP_VALS = 1;
+
     static {
         KalkanProviderRegistrar.ensureSecurityProviderRegistered();
     }
@@ -458,16 +461,27 @@ public final class KalkanProvider implements VerificationProvider {
             List<X509Certificate> trust, Instant refTime, String crlPath, boolean ignoreTruststore) {
         AttributeTable ut = ps.signerInfo().getUnsignedAttributes();
         Attribute revAttr = ut == null ? null : ut.get(OID_REVVALUES);
-        if (revAttr == null) {
-            if (crlPath == null) {
-                String noOcspNoCrl = Messages.get(MsgKey.PROVIDER_REVOCATION_NO_OCSP_NO_CRL);
-                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_REVOCATION_PREFIX, noOcspNoCrl));
-                return new StageOutcome(CheckStatus.NOT_VERIFIED, noOcspNoCrl);
+        if (revAttr != null) {
+            if (hasRevocationValuesTag(revAttr, TAG_OCSP_VALS)) {
+                return revocationOcspOutcome(
+                    revAttr, signerCert, trust, containerCerts, refTime, ignoreTruststore, label(ps));
             }
-            return revocationByCrl(ps, signerCert, trust, containerCerts, refTime, ignoreTruststore, crlPath);
+            if (hasRevocationValuesTag(revAttr, TAG_CRL_VALS)) {
+                X509CRL embedded = extractEmbeddedCrlForSigner(revAttr, signerCert, label(ps));
+                if (embedded != null) {
+                    return revocationByCrlObject(embedded, signerCert, trust, containerCerts, refTime,
+                        ignoreTruststore, RevocationSource.CRL_EMBEDDED, label(ps),
+                        Messages.get(MsgKey.PROVIDER_CRL_EMBEDDED_LABEL));
+                }
+                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_EMBEDDED_NO_MATCH));
+            }
         }
-        return revocationOcspOutcome(
-            revAttr, signerCert, trust, containerCerts, refTime, ignoreTruststore, label(ps));
+        if (crlPath == null) {
+            String noOcspNoCrl = Messages.get(MsgKey.PROVIDER_REVOCATION_NO_OCSP_NO_CRL);
+            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_REVOCATION_PREFIX, noOcspNoCrl));
+            return new StageOutcome(CheckStatus.NOT_VERIFIED, noOcspNoCrl);
+        }
+        return revocationByCrl(ps, signerCert, trust, containerCerts, refTime, ignoreTruststore, crlPath);
     }
 
     private StageOutcome revocationOcspOutcome(
@@ -571,65 +585,79 @@ public final class KalkanProvider implements VerificationProvider {
             ParsedSigner ps, X509Certificate signerCert, List<X509Certificate> trust,
             List<X509Certificate> containerCerts, Instant refTime, boolean ignoreTruststore,
             String crlPath) {
+        X509CRL crl;
         try {
             CertificateFactory cf = CertificateFactory.getInstance("X.509", PROV);
-            X509CRL crl;
             try (InputStream in = new FileInputStream(crlPath)) {
                 crl = (X509CRL) cf.generateCRL(in);
             }
+        } catch (Exception e) {
+            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_PARSE_FAILED, crlPath, rootMessage(e)));
+            return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_PARSE_FAILED, rootMessage(e))).build();
+        }
+        return revocationByCrlObject(crl, signerCert, trust, containerCerts, refTime, ignoreTruststore,
+            RevocationSource.CRL_FILE, label(ps), crlPath);
+    }
+
+    StageOutcome revocationByCrlObject(
+            X509CRL crl, X509Certificate signerCert, List<X509Certificate> trust,
+            List<X509Certificate> containerCerts, Instant refTime, boolean ignoreTruststore,
+            RevocationSource source, String signerLabel, String crlLabel) {
+        try {
             if (!crl.getIssuerX500Principal().equals(signerCert.getIssuerX500Principal())) {
-                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_MISMATCH, crlPath));
-                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_MISMATCH, crlLabel));
+                return StageOutcome.of(CheckStatus.FAIL).source(source)
                     .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_MISMATCH)).build();
             }
             X509Certificate issuer = findBySubject(crl.getIssuerX500Principal(), trust, containerCerts);
             if (issuer == null) {
-                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_NOT_FOUND, crlPath));
-                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_NOT_FOUND, crlLabel));
+                return StageOutcome.of(CheckStatus.FAIL).source(source)
                     .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_NOT_FOUND)).build();
             }
             try {
                 crl.verify(issuer.getPublicKey(), PROV);
             } catch (Exception e) {
-                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_SIGNATURE_FAILED,
-                    crlPath, rootMessage(e)));
-                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_SIGNATURE_FAILED,
+                    crlLabel, rootMessage(e)));
+                return StageOutcome.of(CheckStatus.FAIL).source(source)
                     .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_SIGNATURE_FAILED, rootMessage(e))).build();
             }
-            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_SIGNATURE_OK, crlPath));
+            trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_SIGNATURE_OK, crlLabel));
             if (!crlSignOk(issuer)) {
-                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_NO_CRL_SIGN, crlPath));
-                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_NO_CRL_SIGN, crlLabel));
+                return StageOutcome.of(CheckStatus.FAIL).source(source)
                     .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_NO_CRL_SIGN)).build();
             }
             try {
                 buildPath(issuer, containerCerts, trust, refTime, ignoreTruststore);
             } catch (Exception e) {
-                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_CHAIN_FAILED,
-                    crlPath, rootMessage(e)));
-                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_CHAIN_FAILED,
+                    crlLabel, rootMessage(e)));
+                return StageOutcome.of(CheckStatus.FAIL).source(source)
                     .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_CHAIN_FAILED, rootMessage(e))).build();
             }
-            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_CHAIN_OK, crlPath));
+            trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_ISSUER_CHAIN_OK, crlLabel));
             Instant thisUpdate = toInstant(crl.getThisUpdate());
             Instant nextUpdate = toInstant(crl.getNextUpdate());
             X509CRLEntry entry = crl.getRevokedCertificate(signerCert);
             if (entry != null) {
                 CRLReason r = entry.getRevocationReason();
                 String reason = r != null ? reasonLabel(r.ordinal()) : null;
-                trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_REVOKED, reason));
-                return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+                trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_REVOKED, reason));
+                return StageOutcome.of(CheckStatus.FAIL).source(source)
                     .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_REVOKED))
                     .validFrom(thisUpdate).validUntil(nextUpdate)
                     .revokedAt(toInstant(entry.getRevocationDate())).revokedReason(reason).build();
             }
-            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_NOT_REVOKED,
+            trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_NOT_REVOKED,
                 traceDt(thisUpdate), traceDt(nextUpdate)));
-            return StageOutcome.of(CheckStatus.PASS).source(RevocationSource.CRL_FILE)
+            return StageOutcome.of(CheckStatus.PASS).source(source)
                 .validFrom(thisUpdate).validUntil(nextUpdate).build();
         } catch (Exception e) {
-            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_PARSE_FAILED, crlPath, rootMessage(e)));
-            return StageOutcome.of(CheckStatus.FAIL).source(RevocationSource.CRL_FILE)
+            trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_PARSE_FAILED, crlLabel, rootMessage(e)));
+            return StageOutcome.of(CheckStatus.FAIL).source(source)
                 .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_PARSE_FAILED, rootMessage(e))).build();
         }
     }
@@ -648,6 +676,65 @@ public final class KalkanProvider implements VerificationProvider {
             }
         }
         return null;
+    }
+
+    private static boolean hasRevocationValuesTag(Attribute revValues, int tagNo) {
+        try {
+            ASN1Sequence rv = ASN1Sequence.getInstance(revValues.getAttrValues().getObjectAt(0));
+            for (int i = 0; i < rv.size(); i++) {
+                DEREncodable e = rv.getObjectAt(i);
+                if (e instanceof ASN1TaggedObject t && t.getTagNo() == tagNo) {
+                    ASN1Sequence inner = ASN1Sequence.getInstance(t, true);
+                    if (inner.size() > 0) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    X509CRL extractEmbeddedCrlForSigner(Attribute revValues, X509Certificate signerCert, String signerLabel) {
+        CertificateFactory cf;
+        try {
+            cf = CertificateFactory.getInstance("X.509", PROV);
+        } catch (Exception e) {
+            return null;
+        }
+        try {
+            ASN1Sequence rv = ASN1Sequence.getInstance(revValues.getAttrValues().getObjectAt(0));
+            int index = 0;
+            for (int i = 0; i < rv.size(); i++) {
+                DEREncodable e = rv.getObjectAt(i);
+                if (!(e instanceof ASN1TaggedObject t) || t.getTagNo() != TAG_CRL_VALS) {
+                    continue;
+                }
+                ASN1Sequence crlVals = ASN1Sequence.getInstance(t, true);
+                for (int j = 0; j < crlVals.size(); j++) {
+                    index++;
+                    DEREncodable certListObj = crlVals.getObjectAt(j);
+                    X509CRL crl;
+                    try {
+                        byte[] der = certListObj.getDERObject().getDEREncoded();
+                        crl = (X509CRL) cf.generateCRL(new java.io.ByteArrayInputStream(der));
+                    } catch (Exception parseEx) {
+                        trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_EMBEDDED_SKIPPED,
+                            index, rootMessage(parseEx)));
+                        continue;
+                    }
+                    if (crl != null && crl.getIssuerX500Principal().equals(signerCert.getIssuerX500Principal())) {
+                        return crl;
+                    }
+                    trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_EMBEDDED_SKIPPED,
+                        index, Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_MISMATCH)));
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private StageOutcome archiveOutcome(
