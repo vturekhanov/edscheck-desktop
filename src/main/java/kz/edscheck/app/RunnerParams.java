@@ -20,13 +20,13 @@ public record RunnerParams(
         boolean ignoreTruststore,
         String lib,
         Trace trace,
-        Map<Integer, byte[]> xmlOnlineOcsp) {
+        Map<String, byte[]> externalOcsp) {
 
     public RunnerParams {
         roots = roots == null ? List.of() : List.copyOf(roots);
         crls = crls == null ? List.of() : List.copyOf(crls);
         trace = trace == null ? Trace.NONE : trace;
-        xmlOnlineOcsp = xmlOnlineOcsp == null ? Map.of() : Map.copyOf(xmlOnlineOcsp);
+        externalOcsp = externalOcsp == null ? Map.of() : Map.copyOf(externalOcsp);
     }
 
     public RunnerParams(

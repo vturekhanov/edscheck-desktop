@@ -177,8 +177,11 @@ public record ResultViewModel(
         "ucgo", Messages.get(MsgKey.CA_UCGO));
 
     private static final Map<RevocationSource, String> REV_SOURCE_LABEL = Map.of(
-        RevocationSource.OCSP, Messages.get(MsgKey.REV_SOURCE_OCSP),
+        RevocationSource.OCSP_EMBEDDED, Messages.get(MsgKey.REV_SOURCE_OCSP_EMBEDDED),
+        RevocationSource.OCSP_CONTAINER, Messages.get(MsgKey.REV_SOURCE_OCSP_CONTAINER),
+        RevocationSource.OCSP_EXTERNAL, Messages.get(MsgKey.REV_SOURCE_OCSP_EXTERNAL),
         RevocationSource.CRL_EMBEDDED, Messages.get(MsgKey.REV_SOURCE_CRL_EMBEDDED),
+        RevocationSource.CRL_CONTAINER, Messages.get(MsgKey.REV_SOURCE_CRL_CONTAINER),
         RevocationSource.CRL_FILE, Messages.get(MsgKey.REV_SOURCE_CRL_FILE),
         RevocationSource.CRL_REFERENCE, Messages.get(MsgKey.REV_SOURCE_CRL_REFERENCE));
 

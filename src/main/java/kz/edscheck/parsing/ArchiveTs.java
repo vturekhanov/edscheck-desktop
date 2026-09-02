@@ -5,7 +5,6 @@ import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -218,14 +217,24 @@ public final class ArchiveTs {
     }
 
     private static String compareHashSets(List<byte[]> recorded, List<byte[]> computed, String reason) {
-        if (recorded.size() != computed.size() || !toHexSet(recorded).equals(toHexSet(computed))) {
+        if (!allRecordedHashesFound(recorded, computed)) {
             return reason;
         }
         return null;
     }
 
-    private static Set<String> toHexSet(List<byte[]> blobs) {
-        Set<String> out = new HashSet<>();
+    private static boolean allRecordedHashesFound(List<byte[]> recorded, List<byte[]> computed) {
+        List<String> remaining = toHexList(computed);
+        for (byte[] r : recorded) {
+            if (!remaining.remove(hex(r))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static List<String> toHexList(List<byte[]> blobs) {
+        List<String> out = new ArrayList<>(blobs.size());
         for (byte[] b : blobs) {
             out.add(hex(b));
         }
@@ -233,10 +242,10 @@ public final class ArchiveTs {
     }
 
     public static String markFailure(
-            ParsedArchiveTimestamp mark, Boolean tsaSigOk, Boolean tsaLinksOk,
-            Boolean tsaAnchored, Boolean tsaValidityOk, String hashFailure) {
-        if (mark.parseError != null) {
-            return mark.parseError;
+            String parseError, Boolean tsaSigOk, Boolean tsaLinksOk, Boolean tsaAnchored,
+            Boolean tsaValidityOk, Boolean tsaEkuOk, String revocationFailure, String hashFailure) {
+        if (parseError != null) {
+            return parseError;
         }
         if (!Boolean.TRUE.equals(tsaSigOk)) {
             return Messages.get(MsgKey.ARCHIVE_TS_TST_SIGNATURE_UNCONFIRMED);
@@ -247,8 +256,11 @@ public final class ArchiveTs {
         if (!Boolean.TRUE.equals(tsaValidityOk)) {
             return Messages.get(MsgKey.ARCHIVE_TS_TSA_CERT_EXPIRED);
         }
-        if (!Boolean.TRUE.equals(mark.tsaEkuOk)) {
+        if (!Boolean.TRUE.equals(tsaEkuOk)) {
             return Messages.get(MsgKey.ARCHIVE_TS_TSA_NO_TIMESTAMPING_EKU);
+        }
+        if (revocationFailure != null) {
+            return revocationFailure;
         }
         return hashFailure;
     }

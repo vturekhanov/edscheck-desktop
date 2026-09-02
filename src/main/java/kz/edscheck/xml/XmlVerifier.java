@@ -37,12 +37,6 @@ public final class XmlVerifier {
 
     public static SignedContainer verify(
             VerificationRequest request, byte[] container, DocumentSource document, Trace trace) {
-        return verify(request, container, document, Map.of(), trace);
-    }
-
-    public static SignedContainer verify(
-            VerificationRequest request, byte[] container, DocumentSource document,
-            Map<Integer, byte[]> onlineOcsp, Trace trace) {
         Document doc = XmlFormatDetector.parseSecurely(container);
         DetectedXml detected = XmlFormatDetector.detect(doc);
         XmlSecurityChecks.validate(doc, detected.signatures());
@@ -50,14 +44,14 @@ public final class XmlVerifier {
         if (detected.format() == XmlContainerFormat.XMLESF) {
 
             EsfInvoice invoice = EsfParser.parse(doc);
-            Signature signature = EsfSignatureAssembler.assemble(invoice, request, onlineOcsp.get(0), trace);
+            Signature signature = EsfSignatureAssembler.assemble(invoice, request, trace);
             return new SignedContainer(
                 request.containerPath(), Encoding.DER, 1, List.of(signature),
                 detected.format().value(), null, aggregateAuthority(List.of(signature)));
         }
 
         List<Signature> signatures =
-            XmlSignatureAssembler.assemble(doc, detected.signatures(), request, document, onlineOcsp, trace);
+            XmlSignatureAssembler.assemble(doc, detected.signatures(), request, document, trace);
         return new SignedContainer(
             request.containerPath(), Encoding.DER, signatures.size(), signatures,
             detected.format().value(), null, aggregateAuthority(signatures));
@@ -78,8 +72,8 @@ public final class XmlVerifier {
     }
 
     public static SignedContainer verify(
-            VerificationRequest request, DocumentSource container, Map<Integer, byte[]> onlineOcsp, Trace trace) {
-        return verify(request, readBounded(container, MAX_XML_BYTES), null, onlineOcsp, trace);
+            VerificationRequest request, DocumentSource container, DocumentSource document, Trace trace) {
+        return verify(request, readBounded(container, MAX_XML_BYTES), document, trace);
     }
 
     static byte[] readBounded(DocumentSource source, long maxBytes) {

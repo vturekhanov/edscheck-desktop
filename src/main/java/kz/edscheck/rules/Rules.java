@@ -17,8 +17,13 @@ import kz.edscheck.domain.Verdict;
 import kz.edscheck.domain.Warnings;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
+import kz.edscheck.parsing.ArchiveTs;
+import kz.edscheck.provider.ArchiveMarkOutcome;
 import kz.edscheck.provider.ArchiveTimestampInfo;
+import kz.edscheck.provider.CaRevocationFact;
 import kz.edscheck.provider.KeyUsageInfo;
+import kz.edscheck.provider.RevocationCombine;
+import kz.edscheck.provider.SignerVerification;
 import kz.edscheck.provider.StageOutcome;
 import kz.edscheck.provider.TimestampInfo;
 
@@ -42,12 +47,30 @@ public final class Rules {
     }
 
     private static boolean tsaOcspWindowViolated(TimestampInfo timestamp, PolicyProfile policy) {
-        StageOutcome tsaOcsp = timestamp.tsaOcsp();
-        if (tsaOcsp == null || timestamp.genTime() == null) {
+        if (timestamp.genTime() == null) {
             return false;
         }
-        return ocspWindowViolated(
-            tsaOcsp.validFrom(), tsaOcsp.validUntil(), timestamp.genTime(), policy.ocspMaxAge());
+        return revocationWindowViolated(
+            timestamp.tsaOcsp(), timestamp.genTime(), timestamp.tsaCertNotAfter(), policy);
+    }
+
+    private static boolean revocationWindowViolated(
+            StageOutcome outcome, Instant referenceTime, Instant certNotAfter, PolicyProfile policy) {
+        if (outcome == null) {
+            return false;
+        }
+        Check probe = new Check(Stage.REVOCATION, CheckStatus.PASS, null, null, outcome.source(),
+            null, null, null);
+        Check afterPeriod = applyRevocationPeriod(
+            probe, outcome, referenceTime, Instant.now(), certNotAfter, policy);
+        if (afterPeriod.status() != CheckStatus.PASS) {
+            return true;
+        }
+        if (outcome.source() == null || !outcome.source().isOcsp()) {
+            return false;
+        }
+        Instant thisUpdate = outcome.validFrom();
+        return thisUpdate != null && thisUpdate.isBefore(referenceTime.minus(OCSP_SIGNING_LOWER_BOUND));
     }
 
     private static boolean ocspWindowViolated(
@@ -89,6 +112,24 @@ public final class Rules {
                 return new CheckAndWarnings(
                     new Check(Stage.TIMESTAMP, CheckStatus.FAIL,
                         Messages.get(MsgKey.RULES_TIMESTAMP_TSA_OCSP_WINDOW),
+                        timestamp.genTime(), null, null, null, null),
+                    warnings);
+            }
+
+            StageOutcome caDecision = decideIntermediateCaRevocation(
+                timestamp.intermediateCaRevocations(), timestamp.genTime(), policy);
+            if (caDecision.status() == CheckStatus.NOT_VERIFIED) {
+                return new CheckAndWarnings(
+                    new Check(Stage.TIMESTAMP, CheckStatus.NOT_VERIFIED,
+                        Messages.get(MsgKey.RULES_TIMESTAMP_TSA_INTERMEDIATE_CA_REVOCATION_ABSENT),
+                        timestamp.genTime(), null, null, null, null),
+                    warnings);
+            }
+            if (caDecision.status() != CheckStatus.PASS) {
+                return new CheckAndWarnings(
+                    new Check(Stage.TIMESTAMP, CheckStatus.FAIL,
+                        Messages.get(
+                            MsgKey.RULES_TIMESTAMP_TSA_INTERMEDIATE_CA_REVOCATION_FAILED, caDecision.detail()),
                         timestamp.genTime(), null, null, null, null),
                     warnings);
             }
@@ -137,7 +178,8 @@ public final class Rules {
     }
 
     public static CheckAndWarnings archiveTimestampCheck(
-            ArchiveTimestampInfo info, StageOutcome outcome) {
+            ArchiveTimestampInfo info, StageOutcome outcome, List<ArchiveMarkOutcome> markOutcomes,
+            PolicyProfile policy) {
         List<String> warnings = new ArrayList<>();
         if (info.legacyCount() > 0) {
             warnings.add(Warnings.ARCHIVE_TS_FORMAT_UNSUPPORTED);
@@ -154,6 +196,22 @@ public final class Rules {
                     Messages.get(MsgKey.RULES_ARCHIVE_TS_NONE)),
                 warnings);
         }
+        if (markOutcomes != null && !markOutcomes.isEmpty()) {
+            List<ArchiveTs.Failure> failures = new ArrayList<>();
+            for (ArchiveMarkOutcome mo : markOutcomes) {
+                String revocationFailure = archiveMarkRevocationFailure(mo, policy);
+                String failure = ArchiveTs.markFailure(mo.parseError(), mo.sigOk(), mo.chainOk(), mo.chainOk(),
+                    mo.tsaValidityOk(), mo.tsaEkuOk(), revocationFailure, mo.hashFailure());
+                if (failure != null) {
+                    failures.add(new ArchiveTs.Failure(mo.position(), failure));
+                }
+            }
+            ArchiveTs.Combined combined = ArchiveTs.combineResults(markOutcomes.size(), failures);
+            return new CheckAndWarnings(
+                new Check(Stage.ARCHIVE_TIMESTAMP, combined.ok() ? CheckStatus.PASS : CheckStatus.FAIL,
+                    combined.detail(), info.genTime(), null, null, null, null),
+                warnings);
+        }
         if (outcome == null) {
             return new CheckAndWarnings(
                 new Check(Stage.ARCHIVE_TIMESTAMP, CheckStatus.NOT_VERIFIED,
@@ -165,6 +223,34 @@ public final class Rules {
             new Check(Stage.ARCHIVE_TIMESTAMP, outcome.status(), outcome.detail(),
                 info.genTime(), null, null, null, null),
             warnings);
+    }
+
+    private static String archiveMarkRevocationFailure(ArchiveMarkOutcome mo, PolicyProfile policy) {
+        Instant refTime = mo.genTime();
+        StageOutcome own = mo.ownRevocation();
+        if (own != null) {
+            if (own.status() == CheckStatus.NOT_VERIFIED) {
+                return Messages.get(MsgKey.RULES_ARCHIVE_TS_TSA_REVOCATION_ABSENT);
+            }
+            if (own.status() != CheckStatus.PASS) {
+                return Messages.get(MsgKey.RULES_ARCHIVE_TS_TSA_REVOCATION_FAILED, own.detail());
+            }
+            if (refTime != null && revocationWindowViolated(own, refTime, mo.tsaCertNotAfter(), policy)) {
+                return Messages.get(MsgKey.RULES_ARCHIVE_TS_TSA_REVOCATION_FAILED,
+                    Messages.get(MsgKey.RULES_CHAIN_INTERMEDIATE_CA_WINDOW_EXPIRED));
+            }
+        }
+        if (refTime == null) {
+            return null;
+        }
+        StageOutcome caDecision = decideIntermediateCaRevocation(mo.intermediateCaRevocations(), refTime, policy);
+        if (caDecision.status() == CheckStatus.NOT_VERIFIED) {
+            return Messages.get(MsgKey.RULES_ARCHIVE_TS_TSA_INTERMEDIATE_CA_REVOCATION_ABSENT);
+        }
+        if (caDecision.status() != CheckStatus.PASS) {
+            return Messages.get(MsgKey.RULES_ARCHIVE_TS_TSA_INTERMEDIATE_CA_REVOCATION_FAILED, caDecision.detail());
+        }
+        return null;
     }
 
     public static Check decideValidity(Instant referenceTime, Certificate cert, PolicyProfile policy) {
@@ -205,6 +291,59 @@ public final class Rules {
         return Messages.get(MsgKey.LABEL_CERTIFICATE);
     }
 
+    static StageOutcome decideIntermediateCaRevocation(
+            List<CaRevocationFact> facts, Instant referenceTime, PolicyProfile policy) {
+        if (facts.isEmpty()) {
+            return new StageOutcome(CheckStatus.PASS);
+        }
+        List<StageOutcome> afterWindow = new ArrayList<>();
+        boolean anyMissing = false;
+        for (CaRevocationFact fact : facts) {
+            StageOutcome outcome = fact.outcome();
+            if (outcome.status() == CheckStatus.NOT_VERIFIED) {
+                anyMissing = true;
+                continue;
+            }
+            if (outcome.status() == CheckStatus.PASS
+                    && revocationWindowViolated(outcome, referenceTime, fact.certNotAfter(), policy)) {
+                outcome = StageOutcome.of(CheckStatus.FAIL)
+                    .source(outcome.source())
+                    .validFrom(outcome.validFrom())
+                    .validUntil(outcome.validUntil())
+                    .detail(Messages.get(MsgKey.RULES_CHAIN_INTERMEDIATE_CA_WINDOW_EXPIRED))
+                    .build();
+            }
+            afterWindow.add(outcome);
+        }
+        if (!afterWindow.isEmpty()) {
+            StageOutcome combined = RevocationCombine.combineByRevokedWins(afterWindow);
+            if (combined.status() == CheckStatus.FAIL && combined.revokedAt() != null) {
+                return combined;
+            }
+        }
+        if (anyMissing) {
+            return new StageOutcome(CheckStatus.NOT_VERIFIED);
+        }
+        return RevocationCombine.combineByRevokedWins(afterWindow);
+    }
+
+    public static Check applyIntermediateCaRevocation(
+            Check chain, List<CaRevocationFact> facts, Instant referenceTime, PolicyProfile policy) {
+        if (chain.status() != CheckStatus.PASS || facts.isEmpty()) {
+            return chain;
+        }
+        StageOutcome decision = decideIntermediateCaRevocation(facts, referenceTime, policy);
+        if (decision.status() == CheckStatus.NOT_VERIFIED) {
+            return new Check(Stage.CHAIN, CheckStatus.FAIL,
+                Messages.get(MsgKey.RULES_CHAIN_INTERMEDIATE_CA_REVOCATION_ABSENT));
+        }
+        if (decision.status() != CheckStatus.PASS) {
+            return new Check(Stage.CHAIN, CheckStatus.FAIL,
+                Messages.get(MsgKey.RULES_CHAIN_INTERMEDIATE_CA_REVOCATION_FAILED, decision.detail()));
+        }
+        return chain;
+    }
+
     public static Check applyRevocationPeriod(
             Check check, StageOutcome outcome, Instant referenceTime, Instant checkTime,
             Instant certNotAfter, PolicyProfile policy) {
@@ -212,8 +351,7 @@ public final class Rules {
             return check;
         }
 
-        boolean isCrl = check.source() == RevocationSource.CRL_FILE
-            || check.source() == RevocationSource.CRL_EMBEDDED;
+        boolean isCrl = check.source() != null && !check.source().isOcsp();
         String labelSource = isCrl
             ? Messages.get(MsgKey.RULES_REVOCATION_SOURCE_CRL)
             : Messages.get(MsgKey.RULES_REVOCATION_SOURCE_OCSP_RECEIPT);
@@ -296,7 +434,7 @@ public final class Rules {
 
     public static Check applyOcspSigningWindow(
             Check check, StageOutcome outcome, Instant referenceTime, PolicyProfile policy) {
-        if (outcome == null || check.source() != RevocationSource.OCSP) {
+        if (outcome == null || check.source() == null || !check.source().isOcsp()) {
             return check;
         }
         Instant thisUpdate = outcome.validFrom();

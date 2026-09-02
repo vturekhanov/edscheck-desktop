@@ -20,6 +20,10 @@ public final class SignerVerification {
 
     private final String authority;
 
+    private final List<CaRevocationFact> intermediateCaRevocations;
+
+    private final List<ArchiveMarkOutcome> archiveMarkOutcomes;
+
     public SignerVerification(
             int index, Certificate certificate, KeyUsageInfo keyUsage,
             TimestampInfo timestamp, ArchiveTimestampInfo archive,
@@ -34,6 +38,27 @@ public final class SignerVerification {
             TimestampInfo timestamp, ArchiveTimestampInfo archive,
             Map<Stage, StageOutcome> outcomes, List<Certificate> chain,
             List<String> warnings, List<String> missingBbAttrs, String authority) {
+        this(index, certificate, keyUsage, timestamp, archive, outcomes, chain, warnings,
+            missingBbAttrs, authority, null);
+    }
+
+    public SignerVerification(
+            int index, Certificate certificate, KeyUsageInfo keyUsage,
+            TimestampInfo timestamp, ArchiveTimestampInfo archive,
+            Map<Stage, StageOutcome> outcomes, List<Certificate> chain,
+            List<String> warnings, List<String> missingBbAttrs, String authority,
+            List<CaRevocationFact> intermediateCaRevocations) {
+        this(index, certificate, keyUsage, timestamp, archive, outcomes, chain, warnings,
+            missingBbAttrs, authority, intermediateCaRevocations, null);
+    }
+
+    public SignerVerification(
+            int index, Certificate certificate, KeyUsageInfo keyUsage,
+            TimestampInfo timestamp, ArchiveTimestampInfo archive,
+            Map<Stage, StageOutcome> outcomes, List<Certificate> chain,
+            List<String> warnings, List<String> missingBbAttrs, String authority,
+            List<CaRevocationFact> intermediateCaRevocations,
+            List<ArchiveMarkOutcome> archiveMarkOutcomes) {
         this.index = index;
         this.certificate = certificate;
         this.keyUsage = keyUsage == null ? new KeyUsageInfo() : keyUsage;
@@ -44,6 +69,10 @@ public final class SignerVerification {
         this.warnings = warnings == null ? List.of() : List.copyOf(warnings);
         this.missingBbAttrs = missingBbAttrs == null ? List.of() : List.copyOf(missingBbAttrs);
         this.authority = authority;
+        this.intermediateCaRevocations =
+            intermediateCaRevocations == null ? List.of() : List.copyOf(intermediateCaRevocations);
+        this.archiveMarkOutcomes =
+            archiveMarkOutcomes == null ? List.of() : List.copyOf(archiveMarkOutcomes);
     }
 
     public int index() {
@@ -88,5 +117,13 @@ public final class SignerVerification {
 
     public String authority() {
         return authority;
+    }
+
+    public List<CaRevocationFact> intermediateCaRevocations() {
+        return intermediateCaRevocations;
+    }
+
+    public List<ArchiveMarkOutcome> archiveMarkOutcomes() {
+        return archiveMarkOutcomes;
     }
 }

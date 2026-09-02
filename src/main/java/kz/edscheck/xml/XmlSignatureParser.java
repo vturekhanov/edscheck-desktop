@@ -212,7 +212,7 @@ final class XmlSignatureParser {
         return found;
     }
 
-    private static List<byte[]> encapsulatedValues(Element revocationValues, String wrapperLocalName,
+    static List<byte[]> encapsulatedValues(Element revocationValues, String wrapperLocalName,
             String entryLocalName) {
         if (revocationValues == null) {
             return List.of();

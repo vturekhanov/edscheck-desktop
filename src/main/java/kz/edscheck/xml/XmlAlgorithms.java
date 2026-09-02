@@ -5,7 +5,8 @@ import java.util.Set;
 final class XmlAlgorithms {
 
     static final Set<String> CANONICALIZATION = Set.of(
-        "http://www.w3.org/TR/2001/REC-xml-c14n-20010315");
+        "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
+        "http://www.w3.org/2001/10/xml-exc-c14n#");
 
     static final Set<String> SIGNATURE_METHOD = Set.of(
 
@@ -21,6 +22,7 @@ final class XmlAlgorithms {
         "http://www.w3.org/2000/09/xmldsig#enveloped-signature",
         "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
         "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments",
+        "http://www.w3.org/2001/10/xml-exc-c14n#",
         "http://www.w3.org/2002/06/xmldsig-filter2");
 
     private XmlAlgorithms() {

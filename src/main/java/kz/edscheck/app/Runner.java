@@ -42,11 +42,11 @@ public final class Runner {
         TrustMaterial trust = new TrustMaterial(roots, params.crls());
         VerificationRequest request = new VerificationRequest(
             params.containerPathHint(), params.ca(), params.env(), trust, params.lib(),
-            Map.of(), params.ignoreTruststore());
+            Map.of(), params.externalOcsp(), params.ignoreTruststore());
 
         VerificationProvider provider = buildProvider(params.ca(), params.engine(), params.trace());
         PolicyProfile policy = ddcard ? PolicyProfile.ddcardPolicy() : PolicyProfile.ncaPolicy();
-        VerificationEngine engine = new VerificationEngine(provider, policy, params.trace(), params.xmlOnlineOcsp());
+        VerificationEngine engine = new VerificationEngine(provider, policy, params.trace());
 
         SignedContainer result;
         if (params.documentSource() != null) {

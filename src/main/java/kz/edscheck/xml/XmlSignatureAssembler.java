@@ -25,7 +25,6 @@ import kz.edscheck.engine.VerificationEngine;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.parsing.Parsing;
-import kz.edscheck.provider.ArchiveTimestampInfo;
 import kz.edscheck.provider.KeyUsageInfo;
 import kz.edscheck.provider.SignerVerification;
 import kz.edscheck.provider.StageOutcome;
@@ -41,25 +40,28 @@ final class XmlSignatureAssembler {
 
     static List<Signature> assemble(
             Document doc, List<ParsedXmlSignature> signatures, VerificationRequest request,
-            DocumentSource externalDocument, Map<Integer, byte[]> onlineOcsp, Trace trace) {
+            DocumentSource externalDocument, Trace trace) {
         List<X509Certificate> trust = ManifestTrust.loadCertificates(request.trust().roots());
         boolean ignoreTruststore = request.ignoreTruststore();
         String crlPath = request.trust().crls().isEmpty() ? null : request.trust().crls().get(0);
+        Map<String, byte[]> externalOcsp = request.externalOcsp();
         NodeList sigElements = doc.getElementsByTagNameNS(XmlNamespaces.XMLDSIG, "Signature");
         PolicyProfile policy = PolicyProfile.ncaPolicy();
 
         List<Signature> result = new ArrayList<>(signatures.size());
         for (ParsedXmlSignature ps : signatures) {
             Element sigEl = (Element) sigElements.item(ps.index());
-            result.add(assembleOne(doc, sigEl, ps, trust, ignoreTruststore, crlPath, policy, externalDocument, onlineOcsp, trace));
+            result.add(assembleOne(
+                doc, sigEl, ps, trust, ignoreTruststore, crlPath, externalOcsp, policy, externalDocument, trace));
         }
         return result;
     }
 
     private static Signature assembleOne(
             Document doc, Element sigEl, ParsedXmlSignature ps,
-            List<X509Certificate> trust, boolean ignoreTruststore, String crlPath, PolicyProfile policy,
-            DocumentSource externalDocument, Map<Integer, byte[]> onlineOcsp, Trace trace) {
+            List<X509Certificate> trust, boolean ignoreTruststore, String crlPath,
+            Map<String, byte[]> externalOcsp, PolicyProfile policy,
+            DocumentSource externalDocument, Trace trace) {
         X509Certificate signerCert = ps.certificateRaw();
         List<X509Certificate> containerCerts = signerCert == null ? List.of() : List.of(signerCert);
 
@@ -83,19 +85,23 @@ final class XmlSignatureAssembler {
             XmlCrypto.verifyIntegrity(doc, sigEl, signerCert, "", externalDocument, trace, label);
         outcomes.put(Stage.INTEGRITY, toStageOutcome(integrity));
 
-        outcomes.put(Stage.CHAIN, signerCert == null
-            ? new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE))
+        XmlChainResult chainResult = signerCert == null
+            ? new XmlChainResult(
+                new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE)), List.of())
             : XmlCrypto.verifyChain(signerCert, containerCerts, trust, refTime, ignoreTruststore,
-                ps.signingCertificateV2(), trace, label));
+                ps.signingCertificateV2(), ps.ocspValues(), ps.crlValues(), crlPath, externalOcsp, trace, label);
+        outcomes.put(Stage.CHAIN, chainResult.outcome());
 
         TimestampInfo timestamp = signerCert == null
             ? TimestampInfo.absent()
-            : XmlCrypto.verifyTimestamp(ps, sigEl, containerCerts, trust, refTime, ignoreTruststore, trace, label);
+            : XmlCrypto.verifyTimestamp(ps, sigEl, containerCerts, trust, refTime, ignoreTruststore,
+                crlPath, externalOcsp, trace, label);
 
         outcomes.put(Stage.REVOCATION, signerCert == null
             ? new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE))
-            : XmlCrypto.verifyEmbeddedOcsp(ocspValuesWithOnline(ps, onlineOcsp), ps.crlValues(), crlPath, signerCert,
-                trust, containerCerts, refTime, ignoreTruststore, trace, label));
+            : new kz.edscheck.provider.kalkan.KalkanProvider(trace).revocationCascadeForBag(
+                signerCert, ps.ocspValues(), ps.crlValues(), containerCerts, trust, refTime, crlPath,
+                ignoreTruststore, externalOcsp, label));
 
         KeyUsageInfo keyUsage = signerCert == null ? new KeyUsageInfo() : Parsing.keyUsageInfo(signerCert);
 
@@ -103,21 +109,20 @@ final class XmlSignatureAssembler {
 
         Rules.CheckAndWarnings signedAttrsResult = XadesSignedAttrs.check(ps, policy, trace);
 
+        Element qualifyingProperties = ps.qualifyingPropertiesPresent()
+            ? XmlSignatureParser.matchingQualifyingProperties(doc, ps.id()) : null;
+        XmlArchiveTimestamp.Result archiveResult = signerCert == null
+            ? XmlArchiveTimestamp.Result.none()
+            : XmlArchiveTimestamp.check(doc, sigEl, qualifyingProperties, ps.detached(),
+                ps.ocspValues(), ps.crlValues(), containerCerts, trust, ignoreTruststore, crlPath, externalOcsp,
+                trace, label);
+
         SignerVerification sv = new SignerVerification(
-            ps.index(), ps.certificate(), keyUsage, timestamp, ArchiveTimestampInfo.none(),
-            outcomes, chain, List.of(), List.of(), authority);
+            ps.index(), ps.certificate(), keyUsage, timestamp, archiveResult.info(),
+            outcomes, chain, List.of(), List.of(), authority, chainResult.intermediateCaRevocations(),
+            archiveResult.markOutcomes());
 
         return VerificationEngine.assembleSignature(sv, Set.of(), policy, signedAttrsResult);
-    }
-
-    private static List<byte[]> ocspValuesWithOnline(ParsedXmlSignature ps, Map<Integer, byte[]> onlineOcsp) {
-        byte[] online = onlineOcsp.get(ps.index());
-        if (online == null) {
-            return ps.ocspValues();
-        }
-        List<byte[]> combined = new ArrayList<>(ps.ocspValues());
-        combined.add(online);
-        return combined;
     }
 
     private static StageOutcome toStageOutcome(XmlIntegrityResult integrity) {

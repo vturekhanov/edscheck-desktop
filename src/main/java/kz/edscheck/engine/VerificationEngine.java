@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import kz.edscheck.ddcard.Ddcard;
@@ -34,36 +33,23 @@ public final class VerificationEngine {
     private final VerificationProvider provider;
     private final PolicyProfile policy;
     private final Trace trace;
-    private final Map<Integer, byte[]> xmlOnlineOcsp;
 
     public VerificationEngine(VerificationProvider provider) {
-        this(provider, PolicyProfile.ncaPolicy(), Trace.NONE, Map.of());
+        this(provider, PolicyProfile.ncaPolicy(), Trace.NONE);
     }
 
     public VerificationEngine(VerificationProvider provider, PolicyProfile policy) {
-        this(provider, policy, Trace.NONE, Map.of());
+        this(provider, policy, Trace.NONE);
     }
 
     public VerificationEngine(VerificationProvider provider, Trace trace) {
-        this(provider, PolicyProfile.ncaPolicy(), trace, Map.of());
+        this(provider, PolicyProfile.ncaPolicy(), trace);
     }
 
     public VerificationEngine(VerificationProvider provider, PolicyProfile policy, Trace trace) {
-        this(provider, policy, trace, Map.of());
-    }
-
-    public VerificationEngine(
-            VerificationProvider provider, Trace trace, Map<Integer, byte[]> xmlOnlineOcsp) {
-        this(provider, PolicyProfile.ncaPolicy(), trace, xmlOnlineOcsp);
-    }
-
-    public VerificationEngine(
-            VerificationProvider provider, PolicyProfile policy, Trace trace,
-            Map<Integer, byte[]> xmlOnlineOcsp) {
         this.provider = provider;
         this.policy = policy != null ? policy : PolicyProfile.ncaPolicy();
         this.trace = trace != null ? trace : Trace.NONE;
-        this.xmlOnlineOcsp = xmlOnlineOcsp != null ? xmlOnlineOcsp : Map.of();
     }
 
     public SignedContainer verify(VerificationRequest request, byte[] container) {
@@ -72,7 +58,7 @@ public final class VerificationEngine {
             return verifyDdcard(request, container);
         }
         if (XmlDetect.looksLikeXml(container)) {
-            return XmlVerifier.verify(request, container, null, xmlOnlineOcsp, trace);
+            return XmlVerifier.verify(request, container, null, trace);
         }
         return verifyCms(request, container);
     }
@@ -104,7 +90,7 @@ public final class VerificationEngine {
         }
         if (xml) {
 
-            return XmlVerifier.verify(request, container, xmlOnlineOcsp, trace);
+            return XmlVerifier.verify(request, container, trace);
         }
         ProviderResult result = provider.verifyStreaming(request, container);
         return assembleCmsResult(request, result);
@@ -136,7 +122,7 @@ public final class VerificationEngine {
     public SignedContainer verifyWithDocument(
             VerificationRequest request, byte[] container, DocumentSource document, String documentName) {
         if (XmlDetect.looksLikeXml(container)) {
-            return XmlVerifier.verify(request, container, document, xmlOnlineOcsp, trace);
+            return XmlVerifier.verify(request, container, document, trace);
         }
         return verifyDetached(request, document, List.of(container), documentName);
     }
@@ -230,14 +216,18 @@ public final class VerificationEngine {
             revocation, revocationOutcome, referenceTime.value(), policy);
 
         Rules.CheckAndWarnings archiveResult = Rules.archiveTimestampCheck(
-            sv.archive(), sv.outcomes().get(Stage.ARCHIVE_TIMESTAMP));
+            sv.archive(), sv.outcomes().get(Stage.ARCHIVE_TIMESTAMP), sv.archiveMarkOutcomes(), policy);
         Check archiveCheck = archiveResult.check();
+
+        Check chain = cryptoCheck(Stage.CHAIN, sv, capabilities);
+        chain = Rules.applyIntermediateCaRevocation(
+            chain, sv.intermediateCaRevocations(), referenceTime.value(), policy);
 
         List<Check> checks = List.of(
             cryptoCheck(Stage.INTEGRITY, sv, capabilities),
             signedAttrsCheck,
             tsCheck,
-            cryptoCheck(Stage.CHAIN, sv, capabilities),
+            chain,
             Rules.decideKeyUsage(sv.keyUsage(), policy),
             Rules.decideValidity(referenceTime.value(), sv.certificate(), policy, sv.chain()),
             revocation,

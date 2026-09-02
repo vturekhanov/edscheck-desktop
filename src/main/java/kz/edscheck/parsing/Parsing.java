@@ -237,6 +237,8 @@ public final class Parsing {
             Map<X500Principal, X509Certificate> bySubject) {
         SignedDataContext sdContext = signedDataContext(der);
 
+        boolean hasRevFromCrls = !sdContext.crlBlobs().isEmpty();
+
         List<ParsedSigner> signers = new ArrayList<>();
         List<String> bcOrderKeys = new ArrayList<>();
         boolean anyTs = false;
@@ -250,7 +252,7 @@ public final class Parsing {
             List<Certificate> chain = resolveChain(cert, bySubject);
             Instant signingTime = signedAttrTime(si);
             TstInfo tst = timestampFromUnsigned(si);
-            boolean hasRev = hasUnsignedAttr(si, OID_REVOCATION_VALUES);
+            boolean hasRev = hasUnsignedAttr(si, OID_REVOCATION_VALUES) || hasRevFromCrls;
             EssBinding ess = signingCertificateBinding(si);
             ArchiveData archive = archiveData(si, containerCerts, sdContext);
             anyTs = anyTs || tst.present();
@@ -262,7 +264,7 @@ public final class Parsing {
                 hasRev, tst.tsaEkuOk(), chain, archive.info(),
                 cert, ess.alg(), ess.hash(), tst.tsaCert(), tst.tsaCerts(), tst.tokenDer(),
                 si.getSignature(), tst.imprintAlg(), tst.imprintHash(), archive.marks(), si,
-                missingMandatoryBbAttrs(si.getSignedAttributes())));
+                missingMandatoryBbAttrs(si.getSignedAttributes()), tst.crlBlobs()));
             bcOrderKeys.add(signerInfoSignatureKey(si));
             index++;
         }
@@ -276,7 +278,7 @@ public final class Parsing {
         return new ParsedContainer(
             encoding,
             cadesLevel(anyTs, anyRev, anyArchive, missingMandatoryBbAttrs(signerInfos)),
-            reindexed, containerCerts);
+            reindexed, containerCerts, sdContext.crlBlobs());
     }
 
     static Map<String, MessageDigest> neededDigestAlgorithms(Collection<SignerInformation> signerInfos) {
@@ -396,7 +398,7 @@ public final class Parsing {
             ps.chain(), ps.archive(), ps.signerCertRaw(), ps.signingCertHashAlg(), ps.signingCertHash(),
             ps.tsaCertRaw(), ps.tsaCertsRaw(), ps.tstTokenDer(), ps.signatureValue(),
             ps.tstImprintAlg(), ps.tstImprintHash(), ps.archiveMarks(), ps.signerInfo(),
-            ps.missingBbAttrs());
+            ps.missingBbAttrs(), ps.tstCrlBlobs());
     }
 
     private static List<String> missingMandatoryBbAttrs(Collection<SignerInformation> signerInfos) {
@@ -424,16 +426,16 @@ public final class Parsing {
         return missing;
     }
 
-    private static String cadesLevel(
+    static String cadesLevel(
             boolean hasTimestamp, boolean hasRevocation, boolean hasArchive, List<String> missingBb) {
         if (!missingBb.isEmpty()) {
             return Messages.get(MsgKey.PARSING_CADES_LEVEL_NOT_BB, String.join(", ", missingBb));
         }
-        if (hasArchive) {
-            return Messages.get(MsgKey.PARSING_CADES_LEVEL_LTA);
-        }
+
         if (hasTimestamp && hasRevocation) {
-            return Messages.get(MsgKey.PARSING_CADES_LEVEL_LT);
+            return hasArchive
+                ? Messages.get(MsgKey.PARSING_CADES_LEVEL_LTA)
+                : Messages.get(MsgKey.PARSING_CADES_LEVEL_LT);
         }
         if (hasTimestamp) {
             return Messages.get(MsgKey.PARSING_CADES_LEVEL_T);
@@ -623,22 +625,7 @@ public final class Parsing {
         Map.entry(X509Name.GIVENNAME.getId(), "Given Name"));
 
     private static KeyAlgorithm keyAlgorithm(X509Certificate cert) {
-        String name;
-        try {
-            name = cert.getPublicKey().getAlgorithm();
-        } catch (Exception e) {
-            return null;
-        }
-        if (name == null) {
-            return null;
-        }
-        if (name.equals("RSA")) {
-            return KeyAlgorithm.RSA;
-        }
-        if (name.contains("GOST")) {
-            return KeyAlgorithm.GOST;
-        }
-        return null;
+        return KeyAlgorithm.of(cert);
     }
 
     private static List<String> policyOids(X509Certificate cert) {
@@ -731,10 +718,10 @@ public final class Parsing {
     private record TstInfo(
             Instant genTime, boolean present, Boolean tsaEkuOk, byte[] tokenDer,
             X509Certificate tsaCert, List<X509Certificate> tsaCerts,
-            String imprintAlg, byte[] imprintHash) {
+            String imprintAlg, byte[] imprintHash, List<byte[]> crlBlobs) {
 
         static TstInfo absent() {
-            return new TstInfo(null, false, null, null, null, List.of(), null, null);
+            return new TstInfo(null, false, null, null, null, List.of(), null, null, List.of());
         }
     }
 
@@ -749,11 +736,13 @@ public final class Parsing {
         }
         ASN1Set values = a.getAttrValues();
         if (values.size() == 0) {
-            return new TstInfo(null, true, null, null, null, List.of(), null, null);
+            return new TstInfo(null, true, null, null, null, List.of(), null, null, List.of());
         }
         try {
             Object value = values.getObjectAt(0);
             byte[] tokenDer = ((kz.gov.pki.kalkan.asn1.ASN1Encodable) value).getDEREncoded();
+
+            List<byte[]> tokenCrlBlobs = signedDataContext(tokenDer).crlBlobs();
             ContentInfo ci = ContentInfo.getInstance(value);
             TimeStampToken tst = new TimeStampToken(ci);
             var genTimeDate = tst.getTimeStampInfo().getGenTime();
@@ -784,9 +773,10 @@ public final class Parsing {
                     }
                 }
             }
-            return new TstInfo(genTime, true, ekuOk, tokenDer, tsaCert, tsaCerts, imprintAlg, imprintHash);
+            return new TstInfo(genTime, true, ekuOk, tokenDer, tsaCert, tsaCerts, imprintAlg, imprintHash,
+                tokenCrlBlobs);
         } catch (Exception e) {
-            return new TstInfo(null, true, null, null, null, List.of(), null, null);
+            return new TstInfo(null, true, null, null, null, List.of(), null, null, List.of());
         }
     }
 

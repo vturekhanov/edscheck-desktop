@@ -30,5 +30,6 @@ public record ParsedSigner(
         byte[] tstImprintHash,
         List<ArchiveTs.ParsedArchiveTimestamp> archiveMarks,
         SignerInformation signerInfo,
-        List<String> missingBbAttrs) {
+        List<String> missingBbAttrs,
+        List<byte[]> tstCrlBlobs) {
 }

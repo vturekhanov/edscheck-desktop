@@ -51,7 +51,7 @@ public final class FakeScenario {
         private CheckStatus integrity = CheckStatus.PASS;
         private CheckStatus chain = CheckStatus.PASS;
         private CheckStatus revocation = CheckStatus.PASS;
-        private RevocationSource revocationSource = RevocationSource.OCSP;
+        private RevocationSource revocationSource = RevocationSource.OCSP_EMBEDDED;
         private String revocationDetail;
 
         private Instant revocationValidFrom;

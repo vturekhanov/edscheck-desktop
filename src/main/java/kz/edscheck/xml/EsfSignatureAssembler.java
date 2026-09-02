@@ -34,10 +34,11 @@ final class EsfSignatureAssembler {
     private EsfSignatureAssembler() {
     }
 
-    static Signature assemble(EsfInvoice invoice, VerificationRequest request, byte[] onlineOcsp, Trace trace) {
+    static Signature assemble(EsfInvoice invoice, VerificationRequest request, Trace trace) {
         List<X509Certificate> trust = ManifestTrust.loadCertificates(request.trust().roots());
         boolean ignoreTruststore = request.ignoreTruststore();
         String crlPath = request.trust().crls().isEmpty() ? null : request.trust().crls().get(0);
+        Map<String, byte[]> externalOcsp = request.externalOcsp();
         PolicyProfile policy = PolicyProfile.ncaPolicy();
         X509Certificate signerCert = invoice.certificateRaw();
         Instant refTime = Instant.now(); 
@@ -60,15 +61,18 @@ final class EsfSignatureAssembler {
             ? new StageOutcome(CheckStatus.PASS)
             : new StageOutcome(CheckStatus.FAIL, integrity.errorDetail()));
 
-        outcomes.put(Stage.CHAIN, signerCert == null
-            ? new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE))
-            : XmlCrypto.verifyChain(
-                signerCert, List.of(signerCert), trust, refTime, ignoreTruststore, List.of(), trace, label));
+        XmlChainResult chainResult = signerCert == null
+            ? new XmlChainResult(
+                new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE)), List.of())
+            : XmlCrypto.verifyChain(signerCert, List.of(signerCert), trust, refTime, ignoreTruststore, List.of(),
+                List.of(), List.of(), crlPath, externalOcsp, trace, label);
+        outcomes.put(Stage.CHAIN, chainResult.outcome());
 
         outcomes.put(Stage.REVOCATION, signerCert == null
             ? new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE))
-            : XmlCrypto.verifyEmbeddedOcsp(onlineOcsp == null ? List.of() : List.of(onlineOcsp), List.of(), crlPath,
-                signerCert, trust, List.of(signerCert), refTime, ignoreTruststore, trace, label));
+            : new kz.edscheck.provider.kalkan.KalkanProvider(trace).revocationCascadeForBag(
+                signerCert, List.of(), List.of(), List.of(signerCert), trust, refTime, crlPath,
+                ignoreTruststore, externalOcsp, label));
 
         KeyUsageInfo keyUsage = signerCert == null ? new KeyUsageInfo() : Parsing.keyUsageInfo(signerCert);
         List<Certificate> chain = signerCert == null ? List.of()
@@ -81,7 +85,7 @@ final class EsfSignatureAssembler {
 
         SignerVerification sv = new SignerVerification(
             0, invoice.certificate(), keyUsage, TimestampInfo.absent(), ArchiveTimestampInfo.none(),
-            outcomes, chain, List.of(), List.of(), authority);
+            outcomes, chain, List.of(), List.of(), authority, chainResult.intermediateCaRevocations());
 
         return VerificationEngine.assembleSignature(sv, Set.of(), policy, signedAttrsResult);
     }

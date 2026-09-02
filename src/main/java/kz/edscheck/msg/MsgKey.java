@@ -41,8 +41,11 @@ public enum MsgKey {
     CA_UNKNOWN("ca.unknown", 0),
     CA_MIXED("ca.mixed", 0),
 
-    REV_SOURCE_OCSP("rev_source.ocsp", 0),
+    REV_SOURCE_OCSP_EMBEDDED("rev_source.ocsp_embedded", 0),
+    REV_SOURCE_OCSP_CONTAINER("rev_source.ocsp_container", 0),
+    REV_SOURCE_OCSP_EXTERNAL("rev_source.ocsp_external", 0),
     REV_SOURCE_CRL_EMBEDDED("rev_source.crl_embedded", 0),
+    REV_SOURCE_CRL_CONTAINER("rev_source.crl_container", 0),
     REV_SOURCE_CRL_FILE("rev_source.crl_file", 0),
     REV_SOURCE_CRL_REFERENCE("rev_source.crl_reference", 0),
 
@@ -63,12 +66,26 @@ public enum MsgKey {
     RULES_TIMESTAMP_ABSENT_WARN("rules.timestamp_absent_warn", 0),
     RULES_TIMESTAMP_TSA_NO_EKU("rules.timestamp_tsa_no_eku", 0),
     RULES_TIMESTAMP_TSA_OCSP_WINDOW("rules.timestamp_tsa_ocsp_window", 0),
+
+    RULES_TIMESTAMP_TSA_INTERMEDIATE_CA_REVOCATION_FAILED("rules.timestamp_tsa_intermediate_ca_revocation_failed", 1),
+    RULES_TIMESTAMP_TSA_INTERMEDIATE_CA_REVOCATION_ABSENT("rules.timestamp_tsa_intermediate_ca_revocation_absent", 0),
     RULES_TIMESTAMP_INVALID("rules.timestamp_invalid", 0),
     RULES_SIGNED_ATTRS_REQUIRED_MISSING("rules.signed_attrs_required_missing", 1),
     RULES_SIGNED_ATTRS_MISSING("rules.signed_attrs_missing", 1),
     RULES_ARCHIVE_TS_LEGACY_UNSUPPORTED("rules.archive_ts_legacy_unsupported", 0),
     RULES_ARCHIVE_TS_NONE("rules.archive_ts_none", 0),
     RULES_ARCHIVE_TS_PROVIDER_UNSUPPORTED("rules.archive_ts_provider_unsupported", 0),
+
+    RULES_ARCHIVE_TS_TSA_REVOCATION_FAILED("rules.archive_ts_tsa_revocation_failed", 1),
+    RULES_ARCHIVE_TS_TSA_REVOCATION_ABSENT("rules.archive_ts_tsa_revocation_absent", 0),
+    RULES_ARCHIVE_TS_TSA_INTERMEDIATE_CA_REVOCATION_FAILED(
+        "rules.archive_ts_tsa_intermediate_ca_revocation_failed", 1),
+    RULES_ARCHIVE_TS_TSA_INTERMEDIATE_CA_REVOCATION_ABSENT(
+        "rules.archive_ts_tsa_intermediate_ca_revocation_absent", 0),
+
+    RULES_CHAIN_INTERMEDIATE_CA_REVOCATION_FAILED("rules.chain_intermediate_ca_revocation_failed", 1),
+    RULES_CHAIN_INTERMEDIATE_CA_REVOCATION_ABSENT("rules.chain_intermediate_ca_revocation_absent", 0),
+    RULES_CHAIN_INTERMEDIATE_CA_WINDOW_EXPIRED("rules.chain_intermediate_ca_window_expired", 0),
     RULES_VALIDITY_UNDETERMINED("rules.validity_undetermined", 1),
     RULES_VALIDITY_BEFORE_NOT_BEFORE("rules.validity_before_not_before", 1),
     RULES_VALIDITY_EXPIRED("rules.validity_expired", 1),
@@ -129,7 +146,7 @@ public enum MsgKey {
     PROVIDER_TRACE_TSA_VALIDITY_OK("provider.trace_tsa_validity_ok", 1),
     PROVIDER_TRACE_TSA_VALIDITY_FAIL("provider.trace_tsa_validity_fail", 1),
     PROVIDER_TIMESTAMP_CERT_EXPIRED("provider.timestamp_cert_expired", 0),
-    PROVIDER_TIMESTAMP_TSA_OCSP_PREFIX("provider.timestamp_tsa_ocsp_prefix", 1),
+    PROVIDER_TIMESTAMP_TSA_REVOCATION_PREFIX("provider.timestamp_tsa_revocation_prefix", 1),
     PROVIDER_REVOCATION_NO_OCSP_NO_CRL("provider.revocation_no_ocsp_no_crl", 0),
     PROVIDER_TRACE_OCSP_NOT_EXTRACTED("provider.trace_ocsp_not_extracted", 0),
     PROVIDER_REVOCATION_OCSP_NOT_EXTRACTED("provider.revocation_ocsp_not_extracted", 0),
@@ -176,10 +193,14 @@ public enum MsgKey {
     PROVIDER_TRACE_CRL_EMBEDDED_SKIPPED("provider.trace_crl_embedded_skipped", 2),
     PROVIDER_TRACE_CRL_EMBEDDED_NO_MATCH("provider.trace_crl_embedded_no_match", 0),
     PROVIDER_CRL_EMBEDDED_LABEL("provider.crl_embedded_label", 0),
+
+    PROVIDER_CRL_CONTAINER_LABEL("provider.crl_container_label", 0),
     PROVIDER_TRACE_ARCHIVE_MARK("provider.trace_archive_mark", 2),
     PROVIDER_TRACE_ARCHIVE_MARK_OK("provider.trace_archive_mark_ok", 0),
     PROVIDER_LABEL_SIGNATURE("provider.label_signature", 1),
     PROVIDER_LABEL_TSA_CERT_SUFFIX("provider.label_tsa_cert_suffix", 0),
+    PROVIDER_LABEL_INTERMEDIATE_CA_SUFFIX("provider.label_intermediate_ca_suffix", 1),
+    PROVIDER_LABEL_ARCHIVE_MARK_SUFFIX("provider.label_archive_mark_suffix", 1),
     PROVIDER_TRACE_REVOCATION_PREFIX("provider.trace_revocation_prefix", 1),
 
     COMMON_UNRESOLVED_SIGNER_DETAIL("common.unresolved_signer_detail", 0),
@@ -213,6 +234,10 @@ public enum MsgKey {
     ARCHIVE_TS_TSA_NO_TIMESTAMPING_EKU("archive_ts.tsa_no_timestamping_eku", 0),
     ARCHIVE_TS_MARK_FAILURE("archive_ts.mark_failure", 3),
     ARCHIVE_TS_ALL_VALID("archive_ts.all_valid", 1),
+
+    ARCHIVE_TS_XML_IMPRINT_NOT_RECOMPUTED("archive_ts.xml_imprint_not_recomputed", 0),
+    ARCHIVE_TS_XML_IMPRINT_MISMATCH("archive_ts.xml_imprint_mismatch", 0),
+    ARCHIVE_TS_XML_DETACHED_NOT_SUPPORTED("archive_ts.xml_detached_not_supported", 0),
 
     DDCARD_NOT_PDF("ddcard.not_pdf", 0),
     DDCARD_NO_EMBEDDED_FILES("ddcard.no_embedded_files", 0),
