@@ -72,7 +72,7 @@ public final class KalkanFirstRunPanel extends JPanel {
         JLabel dropHint = new JLabel(
             htmlWrap("<center>" + GuiMessages.get(GuiMsgKey.KALKAN_FIRST_RUN_DROP_HINT, KalkanResolver.STORAGE_FILENAME) + "</center>"),
             SwingConstants.CENTER);
-        JButton chooseButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_CHOOSE_FILE));
+        JButton chooseButton = new JButton(GuiMessages.get(GuiMsgKey.KALKAN_FIRST_RUN_CHOOSE_BUTTON));
         chooseButton.addActionListener(e -> onChooseFile());
 
         continueButton = new JButton(GuiMessages.get(GuiMsgKey.KALKAN_FIRST_RUN_CONTINUE_INFORMATIONAL));

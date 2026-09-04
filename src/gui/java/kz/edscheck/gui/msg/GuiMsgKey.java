@@ -64,6 +64,8 @@ public enum GuiMsgKey {
     KALKAN_FIRST_RUN_EXPLANATION("kalkan_first_run.explanation", 1),
     KALKAN_FIRST_RUN_DROP_HINT("kalkan_first_run.drop_hint", 1),
     KALKAN_FIRST_RUN_FILE_CHOOSER_TITLE("kalkan_first_run.file_chooser_title", 0),
+
+    KALKAN_FIRST_RUN_CHOOSE_BUTTON("kalkan_first_run.choose_button", 0),
     KALKAN_FIRST_RUN_ERROR_MISMATCH("kalkan_first_run.error_mismatch", 0),
     KALKAN_FIRST_RUN_ERROR_UNEXPECTED("kalkan_first_run.error_unexpected", 1),
 
