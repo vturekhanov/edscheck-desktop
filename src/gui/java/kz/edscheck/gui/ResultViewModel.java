@@ -65,9 +65,10 @@ public record ResultViewModel(
             caLabel = CA_LABEL.getOrDefault(caCode, caCode);
         }
 
+        boolean xades = isXades(container.containerFormat());
         List<SignatureView> signatures = new ArrayList<>();
         for (Signature sig : container.signatures()) {
-            signatures.add(signatureView(sig, container.signaturesTotal()));
+            signatures.add(signatureView(sig, container.signaturesTotal(), xades));
         }
 
         return new ResultViewModel(
@@ -90,7 +91,11 @@ public record ResultViewModel(
         return distinct > 1;
     }
 
-    private static SignatureView signatureView(Signature sig, int total) {
+    private static boolean isXades(String containerFormat) {
+        return "xades".equals(containerFormat) || "xades-detached".equals(containerFormat);
+    }
+
+    private static SignatureView signatureView(Signature sig, int total, boolean xades) {
         Certificate signer = sig.signer();
         String signerDisplayName = nonEmpty(signer.commonName())
             ? signer.commonName() : Messages.get(MsgKey.TEXT_NO_VALUE);
@@ -104,7 +109,7 @@ public record ResultViewModel(
 
         List<CheckView> checks = new ArrayList<>();
         for (Check check : sig.checks()) {
-            checks.add(checkView(check));
+            checks.add(checkView(check, xades));
         }
 
         return new SignatureView(
@@ -131,8 +136,10 @@ public record ResultViewModel(
         return Messages.get(MsgKey.VERDICT_INVALID);
     }
 
-    private static CheckView checkView(Check check) {
-        String stageLabel = STAGE_LABEL.getOrDefault(check.stage(), check.stage().jsonValue());
+    private static CheckView checkView(Check check, boolean xades) {
+        String stageLabel = xades && check.stage() == Stage.SIGNED_ATTRIBUTES
+            ? Messages.get(MsgKey.XML_STAGE_SIGNED_PROPERTIES)
+            : STAGE_LABEL.getOrDefault(check.stage(), check.stage().jsonValue());
         String sourceLabel = check.source() != null ? REV_SOURCE_LABEL.get(check.source()) : null;
         String revokedReasonLabel = check.revokedReason() != null
             ? REVOCATION_REASON_LABEL.getOrDefault(check.revokedReason(), check.revokedReason())
