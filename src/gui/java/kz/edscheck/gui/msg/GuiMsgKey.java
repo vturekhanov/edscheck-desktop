@@ -11,6 +11,11 @@ public enum GuiMsgKey {
 
     EMPTY_STATE_HINT("empty_state.hint", 0),
 
+    EMPTY_STATE_INFORMATIONAL_WARNING("empty_state.informational_warning", 0),
+
+    FOOTER_INFORMATIONAL("footer.informational", 1),
+    FOOTER_INFORMATIONAL_LINK_TEXT("footer.informational_link_text", 0),
+
     CERT_VALID_FROM_TO("cert.valid_from_to", 2),
     CERT_VALID_TO("cert.valid_to", 1),
     CERT_VALID_FROM("cert.valid_from", 1),
@@ -61,6 +66,8 @@ public enum GuiMsgKey {
     KALKAN_FIRST_RUN_FILE_CHOOSER_TITLE("kalkan_first_run.file_chooser_title", 0),
     KALKAN_FIRST_RUN_ERROR_MISMATCH("kalkan_first_run.error_mismatch", 0),
     KALKAN_FIRST_RUN_ERROR_UNEXPECTED("kalkan_first_run.error_unexpected", 1),
+
+    KALKAN_FIRST_RUN_CONTINUE_INFORMATIONAL("kalkan_first_run.continue_informational", 0),
 
     KALKAN_AGENT_UNAVAILABLE("kalkan_first_run.agent_unavailable", 0),
 

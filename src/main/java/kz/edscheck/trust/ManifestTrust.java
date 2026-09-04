@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.Security;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -15,8 +14,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import kz.gov.pki.kalkan.jce.provider.KalkanProvider;
-
 import kz.edscheck.errors.OperationalException;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
@@ -24,13 +21,6 @@ import kz.edscheck.msg.MsgKey;
 public final class ManifestTrust {
     private static final Logger LOG = Logger.getLogger(ManifestTrust.class.getName());
     private static final Path MANIFEST_CERTS_PREFIX = Paths.get("certs");
-    private static final String PROV = "KALKAN";
-
-    static {
-        if (Security.getProvider(PROV) == null) {
-            Security.addProvider(new KalkanProvider());
-        }
-    }
 
     private ManifestTrust() {
     }
@@ -93,7 +83,7 @@ public final class ManifestTrust {
         List<X509Certificate> certs = new ArrayList<>();
         CertificateFactory cf;
         try {
-            cf = CertificateFactory.getInstance("X.509", PROV);
+            cf = ActiveBackend.x509CertificateFactory();
         } catch (Exception e) {
             throw new OperationalException(
                 Messages.get(MsgKey.MANIFEST_TRUST_CERT_FACTORY_FAILED, e.getMessage()), e);

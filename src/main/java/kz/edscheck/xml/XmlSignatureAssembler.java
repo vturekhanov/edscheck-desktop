@@ -63,7 +63,7 @@ final class XmlSignatureAssembler {
             Map<String, byte[]> externalOcsp, PolicyProfile policy,
             DocumentSource externalDocument, Trace trace) {
         X509Certificate signerCert = ps.certificateRaw();
-        List<X509Certificate> containerCerts = signerCert == null ? List.of() : List.of(signerCert);
+        List<X509Certificate> containerCerts = containerCerts(signerCert, ps.certificateValues());
 
         Instant provisionalGenTime = peekGenTime(ps.signatureTimestampToken());
         Instant refTime = provisionalGenTime != null ? provisionalGenTime : Instant.now();
@@ -99,7 +99,7 @@ final class XmlSignatureAssembler {
 
         outcomes.put(Stage.REVOCATION, signerCert == null
             ? new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE))
-            : new kz.edscheck.provider.kalkan.KalkanProvider(trace).revocationCascadeForBag(
+            : new kz.edscheck.provider.jce.JceVerificationProvider(trace).revocationCascadeForBag(
                 signerCert, ps.ocspValues(), ps.crlValues(), containerCerts, trust, refTime, crlPath,
                 ignoreTruststore, externalOcsp, label));
 
@@ -139,15 +139,28 @@ final class XmlSignatureAssembler {
             return null;
         }
         try {
-            kz.gov.pki.kalkan.asn1.ASN1InputStream ain = new kz.gov.pki.kalkan.asn1.ASN1InputStream(tstDer);
-            kz.gov.pki.kalkan.asn1.cms.ContentInfo ci =
-                kz.gov.pki.kalkan.asn1.cms.ContentInfo.getInstance(ain.readObject());
-            kz.gov.pki.kalkan.tsp.TimeStampToken tst = new kz.gov.pki.kalkan.tsp.TimeStampToken(ci);
+            org.bouncycastle.asn1.ASN1InputStream ain = new org.bouncycastle.asn1.ASN1InputStream(tstDer);
+            org.bouncycastle.asn1.cms.ContentInfo ci =
+                org.bouncycastle.asn1.cms.ContentInfo.getInstance(ain.readObject());
+            org.bouncycastle.tsp.TimeStampToken tst = new org.bouncycastle.tsp.TimeStampToken(ci);
             var genTime = tst.getTimeStampInfo().getGenTime();
             return genTime == null ? null : genTime.toInstant();
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private static List<X509Certificate> containerCerts(X509Certificate signerCert, List<X509Certificate> certificateValues) {
+        if (signerCert == null) {
+            return List.of();
+        }
+        if (certificateValues.isEmpty()) {
+            return List.of(signerCert);
+        }
+        List<X509Certificate> result = new ArrayList<>(certificateValues.size() + 1);
+        result.add(signerCert);
+        result.addAll(certificateValues);
+        return result;
     }
 
     private static Map<X500Principal, X509Certificate> bySubject(List<X509Certificate> trust, X509Certificate signerCert) {

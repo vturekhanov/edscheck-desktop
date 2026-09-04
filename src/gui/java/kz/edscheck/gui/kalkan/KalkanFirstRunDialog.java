@@ -14,6 +14,7 @@ import kz.edscheck.gui.msg.GuiMsgKey;
 
 public final class KalkanFirstRunDialog extends JDialog {
     private Path resolvedPath;
+    private boolean continueInformational;
 
     public KalkanFirstRunDialog() {
         super((Frame) null, GuiMessages.get(GuiMsgKey.KALKAN_FIRST_RUN_TITLE), true);
@@ -28,6 +29,10 @@ public final class KalkanFirstRunDialog extends JDialog {
             resolvedPath = path;
             setVisible(false);
             dispose();
+        }, () -> {
+            continueInformational = true;
+            setVisible(false);
+            dispose();
         }));
 
         setSize(480, 420);
@@ -38,5 +43,9 @@ public final class KalkanFirstRunDialog extends JDialog {
 
     public Path resolvedPath() {
         return resolvedPath;
+    }
+
+    public boolean continueInformational() {
+        return continueInformational;
     }
 }

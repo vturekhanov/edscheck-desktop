@@ -80,7 +80,8 @@ final class XmlSignatureParser {
             signatureTimeStamp == null ? null
                 : base64OfChild(signatureTimeStamp, XmlNamespaces.XADES_132, "EncapsulatedTimeStamp"),
             encapsulatedValues(revocationValues, "OCSPValues", "EncapsulatedOCSPValue"),
-            encapsulatedValues(revocationValues, "CRLValues", "EncapsulatedCRLValue"));
+            encapsulatedValues(revocationValues, "CRLValues", "EncapsulatedCRLValue"),
+            certificateValues(unsignedSignatureProperties));
     }
 
     static Element matchingQualifyingProperties(Document doc, String signatureId) {
@@ -226,6 +227,27 @@ final class XmlSignatureParser {
         for (int i = 0; i < entries.getLength(); i++) {
             String text = entries.item(i).getTextContent();
             result.add(BASE64.decode(text.trim()));
+        }
+        return result;
+    }
+
+    private static List<X509Certificate> certificateValues(Element unsignedSignatureProperties) {
+        if (unsignedSignatureProperties == null) {
+            return List.of();
+        }
+        Element wrapper =
+            firstChildByTagNS(unsignedSignatureProperties, XmlNamespaces.XADES_132, "CertificateValues");
+        if (wrapper == null) {
+            return List.of();
+        }
+        NodeList entries =
+            wrapper.getElementsByTagNameNS(XmlNamespaces.XADES_132, "EncapsulatedX509Certificate");
+        List<X509Certificate> result = new ArrayList<>(entries.getLength());
+        for (int i = 0; i < entries.getLength(); i++) {
+            String text = entries.item(i).getTextContent();
+            if (text != null && !text.isBlank()) {
+                result.add(XmlCertificates.parse(text));
+            }
         }
         return result;
     }

@@ -9,19 +9,19 @@ import java.security.MessageDigest;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.ASN1Set;
-import kz.gov.pki.kalkan.asn1.DERObjectIdentifier;
-import kz.gov.pki.kalkan.asn1.cms.CMSObjectIdentifiers;
-import kz.gov.pki.kalkan.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.ASN1Set;
+import org.bouncycastle.asn1.cms.CMSObjectIdentifiers;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
 import kz.edscheck.domain.DocumentSource;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
+import kz.edscheck.trust.ActiveBackend;
 import kz.edscheck.trust.DigestAlgorithms;
 
 final class AttachedSplitter {
-    private static final String PROV = "KALKAN";
     private static final int STREAM_BUFFER = 1 << 16;
 
     private static final int EXTRACT_STREAM_BUFFER = 16 * 1024 * 1024;
@@ -65,7 +65,7 @@ final class AttachedSplitter {
         Tlv oidTlv = readTagLen(in);
         requireTag(oidTlv, 0x06, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_CONTENT_TYPE_OID));
         byte[] oidFull = materializeFullTlv(in, oidTlv);
-        DERObjectIdentifier contentType = readAsn1(oidFull, DERObjectIdentifier.class);
+        ASN1ObjectIdentifier contentType = readAsn1(oidFull, ASN1ObjectIdentifier.class);
         if (!CMSObjectIdentifiers.signedData.equals(contentType)) {
             throw new SplitFailedException(
                 Messages.get(MsgKey.ATTACHED_SPLITTER_WRONG_CONTENT_TYPE, contentType.getId()));
@@ -129,7 +129,7 @@ final class AttachedSplitter {
         Tlv oidTlv = readTagLen(in);
         requireTag(oidTlv, 0x06, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_CONTENT_TYPE_OID));
         byte[] oidFull = materializeFullTlv(in, oidTlv);
-        DERObjectIdentifier contentType = readAsn1(oidFull, DERObjectIdentifier.class);
+        ASN1ObjectIdentifier contentType = readAsn1(oidFull, ASN1ObjectIdentifier.class);
         if (!CMSObjectIdentifiers.signedData.equals(contentType)) {
             throw new SplitFailedException(
                 Messages.get(MsgKey.ATTACHED_SPLITTER_WRONG_CONTENT_TYPE, contentType.getId()));
@@ -262,7 +262,7 @@ final class AttachedSplitter {
             } catch (Exception e) {
                 continue; 
             }
-            String oid = alg.getObjectId().getId();
+            String oid = alg.getAlgorithm().getId();
             if (mdByOid.containsKey(oid)) {
                 continue;
             }
@@ -271,7 +271,7 @@ final class AttachedSplitter {
                 continue;
             }
             try {
-                mdByOid.put(oid, MessageDigest.getInstance(jceName, PROV));
+                mdByOid.put(oid, MessageDigest.getInstance(jceName, ActiveBackend.current().jceProviderName()));
             } catch (Exception e) {
 
             }

@@ -15,6 +15,8 @@ import org.apache.xml.security.keys.storage.StorageResolver;
 import org.apache.xml.security.utils.XMLUtils;
 import org.w3c.dom.Element;
 
+import kz.edscheck.trust.ActiveBackend;
+
 final class GostX509KeyResolver extends KeyResolverSpi {
     @Override
     protected boolean engineCanResolve(Element element, String baseUri, StorageResolver storage) {
@@ -68,7 +70,7 @@ final class GostX509KeyResolver extends KeyResolverSpi {
     private static X509Certificate parseCertificate(Element certElement) throws Exception {
         byte[] der = Base64.getMimeDecoder().decode(certElement.getTextContent().trim());
         try (ByteArrayInputStream in = new ByteArrayInputStream(der)) {
-            CertificateFactory cf = CertificateFactory.getInstance("X.509", "KALKAN");
+            CertificateFactory cf = ActiveBackend.x509CertificateFactory();
             return (X509Certificate) cf.generateCertificate(in);
         }
     }

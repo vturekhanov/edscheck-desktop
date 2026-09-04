@@ -1,9 +1,9 @@
 package kz.edscheck.parsing;
 
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.cms.CMSObjectIdentifiers;
-import kz.gov.pki.kalkan.asn1.cms.ContentInfo;
-import kz.gov.pki.kalkan.asn1.cms.SignedData;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.cms.CMSObjectIdentifiers;
+import org.bouncycastle.asn1.cms.ContentInfo;
+import org.bouncycastle.asn1.cms.SignedData;
 
 import kz.edscheck.errors.ContainerException;
 import kz.edscheck.msg.Messages;

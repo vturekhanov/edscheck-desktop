@@ -18,11 +18,12 @@ import org.apache.pdfbox.pdmodel.common.PDNameTreeNode;
 import org.apache.pdfbox.pdmodel.common.filespecification.PDComplexFileSpecification;
 import org.apache.pdfbox.pdmodel.common.filespecification.PDEmbeddedFile;
 
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.DEROctetString;
-import kz.gov.pki.kalkan.asn1.cms.CMSObjectIdentifiers;
-import kz.gov.pki.kalkan.asn1.cms.ContentInfo;
-import kz.gov.pki.kalkan.asn1.cms.SignedData;
+import org.bouncycastle.asn1.ASN1Encoding;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.DEROctetString;
+import org.bouncycastle.asn1.cms.CMSObjectIdentifiers;
+import org.bouncycastle.asn1.cms.ContentInfo;
+import org.bouncycastle.asn1.cms.SignedData;
 
 import kz.edscheck.domain.DocumentSource;
 import kz.edscheck.errors.ContainerException;
@@ -111,7 +112,8 @@ public final class Ddcard {
                 signedData.getDigestAlgorithms(), newEncap, signedData.getCertificates(),
                 signedData.getCRLs(), signedData.getSignerInfos());
             ContentInfo newOuter = new ContentInfo(CMSObjectIdentifiers.signedData, newSignedData);
-            return newOuter.getDEREncoded();
+
+            return newOuter.getEncoded(ASN1Encoding.DL);
         } catch (ContainerException e) {
             throw e;
         } catch (Exception e) {

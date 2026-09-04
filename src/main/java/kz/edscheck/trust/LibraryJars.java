@@ -32,7 +32,14 @@ public final class LibraryJars {
         "slf4j-api-2.0.9.jar",
         "0818930dc8d7debb403204611691da58e49d42c50b6ffcfdce02dadb7c3c2b6c",
         "slf4j-nop-2.0.9.jar",
-        "5612367b12bac3eacf4e6ff4e06ce5ba1c83c4d8d6d5e2ea5f924635717a6d83");
+        "5612367b12bac3eacf4e6ff4e06ce5ba1c83c4d8d6d5e2ea5f924635717a6d83",
+
+        "bcprov-jdk18on-1.85.2.jar",
+        "986b0fb92ec10e0c66b43e036ce0077e6150cfaecd1db9fb92b56672e157afe5",
+        "bcutil-jdk18on-1.85.jar",
+        "590f55ed5d68529239898a4a5c4f730b6e37f45d1cfa3fbe51f8485abe32c42d",
+        "bcpkix-jdk18on-1.85.jar",
+        "c9f82b2d4e99c4bbdfccf684e52cc06ea06a0b567bfd0d08f9c5a3f417055996");
 
     private static final Map<String, String> TEST_ONLY_PINS = Map.of(
         "junit-platform-console-standalone-6.1.1.jar",

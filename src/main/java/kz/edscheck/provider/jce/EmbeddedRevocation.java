@@ -1,4 +1,4 @@
-package kz.edscheck.provider.kalkan;
+package kz.edscheck.provider.jce;
 
 import java.io.ByteArrayInputStream;
 import java.security.cert.CertificateFactory;
@@ -7,18 +7,20 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.ASN1Sequence;
-import kz.gov.pki.kalkan.asn1.ASN1TaggedObject;
-import kz.gov.pki.kalkan.asn1.DEREncodable;
-import kz.gov.pki.kalkan.asn1.DERObjectIdentifier;
-import kz.gov.pki.kalkan.ocsp.BasicOCSPResp;
-import kz.gov.pki.kalkan.ocsp.CertificateID;
-import kz.gov.pki.kalkan.ocsp.OCSPResp;
-import kz.gov.pki.kalkan.ocsp.SingleResp;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1Encoding;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.ASN1TaggedObject;
+import org.bouncycastle.cert.ocsp.BasicOCSPResp;
+import org.bouncycastle.cert.ocsp.CertificateID;
+import org.bouncycastle.cert.ocsp.OCSPResp;
+import org.bouncycastle.cert.ocsp.SingleResp;
+
+import kz.edscheck.trust.ActiveBackend;
 
 public final class EmbeddedRevocation {
-    private static final String PROV = "KALKAN";
 
     private static final String OID_RI_OCSP_RESPONSE = "1.3.6.1.5.5.7.16.2";
     private static final int TAG_REVOCATION_INFO_OTHER = 1;
@@ -31,15 +33,15 @@ public final class EmbeddedRevocation {
 
     public static CrlsEntry parseCrlsBlob(byte[] blob) {
         try {
-            DEREncodable obj = new ASN1InputStream(blob).readObject();
+            Object obj = new ASN1InputStream(blob).readObject();
             if (obj instanceof ASN1TaggedObject t && t.getTagNo() == TAG_REVOCATION_INFO_OTHER) {
                 ASN1Sequence other = ASN1Sequence.getInstance(t, false);
-                DERObjectIdentifier oid = DERObjectIdentifier.getInstance(other.getObjectAt(0));
+                ASN1ObjectIdentifier oid = ASN1ObjectIdentifier.getInstance(other.getObjectAt(0));
                 if (!OID_RI_OCSP_RESPONSE.equals(oid.getId())) {
                     return new CrlsEntry(null, null); 
                 }
                 byte[] payload =
-                    ((kz.gov.pki.kalkan.asn1.ASN1Encodable) other.getObjectAt(1)).getDEREncoded();
+                    ((ASN1Encodable) other.getObjectAt(1)).toASN1Primitive().getEncoded(ASN1Encoding.DER);
                 OCSPResp resp = new OCSPResp(payload);
                 if (resp.getStatus() != 0) {
                     return new CrlsEntry(null, null); 
@@ -49,7 +51,7 @@ public final class EmbeddedRevocation {
                 }
                 return new CrlsEntry(null, null);
             }
-            CertificateFactory cf = CertificateFactory.getInstance("X.509", PROV);
+            CertificateFactory cf = CertificateFactory.getInstance("X.509", ActiveBackend.current().jceProviderName());
             X509CRL crl = (X509CRL) cf.generateCRL(new ByteArrayInputStream(blob));
             return new CrlsEntry(crl, null);
         } catch (Exception ignored) {
@@ -84,8 +86,8 @@ public final class EmbeddedRevocation {
     public static boolean matchesOcsp(BasicOCSPResp ocsp, X509Certificate issuerCert, X509Certificate target) {
         for (SingleResp sr : ocsp.getResponses()) {
             try {
-                CertificateID expected = new CertificateID(
-                    sr.getCertID().getHashAlgOID(), issuerCert, target.getSerialNumber(), PROV);
+                CertificateID expected = CmsBridge.certificateId(
+                    sr.getCertID().getHashAlgOID(), issuerCert, target.getSerialNumber(), ActiveBackend.current().jceProviderName());
                 if (expected.equals(sr.getCertID())) {
                     return true;
                 }

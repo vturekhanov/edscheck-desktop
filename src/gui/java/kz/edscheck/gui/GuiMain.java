@@ -52,7 +52,7 @@ public final class GuiMain {
             }
         }
 
-        resolveKalkan();
+        boolean informationalMode = resolveKalkan();
 
         ThemeWatcher themeWatcher = new ThemeWatcher(OsThemeDetector::detect, changed ->
             SwingUtilities.invokeLater(() -> {
@@ -61,31 +61,38 @@ public final class GuiMain {
             }), theme);
         themeWatcher.start();
 
-        SwingUtilities.invokeLater(() -> new MainWindow().setVisible(true));
+        SwingUtilities.invokeLater(() -> new MainWindow(informationalMode).setVisible(true));
     }
 
-    private static void resolveKalkan() {
+    private static boolean resolveKalkan() {
         Instrumentation instrumentation = GuiAgent.instrumentation();
         KalkanResolver.Resolution resolution =
             KalkanResolver.resolve(instrumentation, KalkanResolver.defaultCandidates());
         if (resolution instanceof KalkanResolver.Resolution.AgentUnavailable) {
             System.err.println(Messages.get(MsgKey.ERROR, GuiMessages.get(GuiMsgKey.KALKAN_AGENT_UNAVAILABLE)));
             System.exit(2);
-            return;
+            return false;
         }
         while (resolution instanceof KalkanResolver.Resolution.NotFound) {
-            Path resolvedPath = showFirstRunDialogAndAwaitResolution();
-            resolution = KalkanResolver.resolve(instrumentation, List.of(resolvedPath));
+            FirstRunOutcome outcome = showFirstRunDialogAndAwaitResolution();
+            if (outcome.continueInformational()) {
+                return true;
+            }
+            resolution = KalkanResolver.resolve(instrumentation, List.of(outcome.resolvedPath()));
         }
+        return false;
     }
 
-    private static Path showFirstRunDialogAndAwaitResolution() {
-        Path[] holder = new Path[1];
+    private record FirstRunOutcome(Path resolvedPath, boolean continueInformational) {
+    }
+
+    private static FirstRunOutcome showFirstRunDialogAndAwaitResolution() {
+        FirstRunOutcome[] holder = new FirstRunOutcome[1];
         try {
             SwingUtilities.invokeAndWait(() -> {
                 KalkanFirstRunDialog dialog = new KalkanFirstRunDialog();
                 dialog.setVisible(true);
-                holder[0] = dialog.resolvedPath();
+                holder[0] = new FirstRunOutcome(dialog.resolvedPath(), dialog.continueInformational());
             });
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

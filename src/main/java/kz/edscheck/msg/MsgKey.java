@@ -122,6 +122,7 @@ public enum MsgKey {
     PROVIDER_TRACE_INTEGRITY_OK("provider.trace_integrity_ok", 0),
     PROVIDER_TRACE_INTEGRITY_MISMATCH("provider.trace_integrity_mismatch", 0),
     PROVIDER_INTEGRITY_MISMATCH("provider.integrity_mismatch", 0),
+    PROVIDER_INTEGRITY_DIGEST_MISMATCH("provider.integrity_digest_mismatch", 0),
     PROVIDER_TRACE_INTEGRITY_ERROR("provider.trace_integrity_error", 1),
     PROVIDER_TRACE_ESS_UNKNOWN_ALG("provider.trace_ess_unknown_alg", 1),
     PROVIDER_ESS_UNKNOWN_ALG("provider.ess_unknown_alg", 1),
@@ -202,6 +203,18 @@ public enum MsgKey {
     PROVIDER_LABEL_INTERMEDIATE_CA_SUFFIX("provider.label_intermediate_ca_suffix", 1),
     PROVIDER_LABEL_ARCHIVE_MARK_SUFFIX("provider.label_archive_mark_suffix", 1),
     PROVIDER_TRACE_REVOCATION_PREFIX("provider.trace_revocation_prefix", 1),
+
+    PROVIDER_CMS_BRIDGE_UNKNOWN_DIGEST_ALG("provider.cms_bridge_unknown_digest_alg", 1),
+    PROVIDER_CMS_BRIDGE_CERT_NOT_ENCODABLE("provider.cms_bridge_cert_not_encodable", 1),
+
+    PROVIDER_BC_UNKNOWN_DIGEST_OID("provider.bc_unknown_digest_oid", 1),
+    PROVIDER_BC_KEY_PARAMS_PARSE_FAILED("provider.bc_key_params_parse_failed", 1),
+    PROVIDER_BC_UNKNOWN_CURVE("provider.bc_unknown_curve", 1),
+    PROVIDER_BC_KEY_BYTES_PARSE_FAILED("provider.bc_key_bytes_parse_failed", 1),
+    PROVIDER_BC_POINT_NOT_ON_CURVE("provider.bc_point_not_on_curve", 1),
+    PROVIDER_BC_SPKI_PARSE_FAILED("provider.bc_spki_parse_failed", 1),
+    PROVIDER_BC_VERIFY_ONLY("provider.bc_verify_only", 0),
+    PROVIDER_BC_PRIVATE_KEY_NOT_SUPPORTED("provider.bc_private_key_not_supported", 0),
 
     COMMON_UNRESOLVED_SIGNER_DETAIL("common.unresolved_signer_detail", 0),
 

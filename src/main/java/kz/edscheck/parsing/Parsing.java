@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.security.Security;
-import java.security.cert.CertStore;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
@@ -22,26 +20,35 @@ import java.util.Map;
 import java.util.Set;
 import javax.security.auth.x500.X500Principal;
 
-import kz.gov.pki.kalkan.asn1.ASN1EncodableVector;
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.ASN1OctetString;
-import kz.gov.pki.kalkan.asn1.ASN1Sequence;
-import kz.gov.pki.kalkan.asn1.ASN1Set;
-import kz.gov.pki.kalkan.asn1.DERGeneralizedTime;
-import kz.gov.pki.kalkan.asn1.DERObjectIdentifier;
-import kz.gov.pki.kalkan.asn1.DERUTCTime;
-import kz.gov.pki.kalkan.asn1.cms.Attribute;
-import kz.gov.pki.kalkan.asn1.cms.AttributeTable;
-import kz.gov.pki.kalkan.asn1.cms.CMSAttributes;
-import kz.gov.pki.kalkan.asn1.cms.ContentInfo;
-import kz.gov.pki.kalkan.asn1.cms.SignedData;
-import kz.gov.pki.kalkan.asn1.cms.SignerInfo;
-import kz.gov.pki.kalkan.asn1.x509.PolicyInformation;
-import kz.gov.pki.kalkan.asn1.x509.X509Name;
-import kz.gov.pki.kalkan.jce.provider.KalkanProvider;
-import kz.gov.pki.kalkan.jce.provider.cms.CMSSignedData;
-import kz.gov.pki.kalkan.jce.provider.cms.SignerInformation;
-import kz.gov.pki.kalkan.tsp.TimeStampToken;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1EncodableVector;
+import org.bouncycastle.asn1.ASN1Encoding;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.ASN1Set;
+import org.bouncycastle.asn1.ASN1String;
+import org.bouncycastle.asn1.DERGeneralizedTime;
+import org.bouncycastle.asn1.DERUTCTime;
+import org.bouncycastle.asn1.cms.Attribute;
+import org.bouncycastle.asn1.cms.AttributeTable;
+import org.bouncycastle.asn1.cms.CMSAttributes;
+import org.bouncycastle.asn1.cms.ContentInfo;
+import org.bouncycastle.asn1.cms.SignedData;
+import org.bouncycastle.asn1.cms.SignerInfo;
+import org.bouncycastle.asn1.ess.SigningCertificateV2;
+import org.bouncycastle.asn1.x500.AttributeTypeAndValue;
+import org.bouncycastle.asn1.x500.RDN;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x500.style.BCStyle;
+import org.bouncycastle.asn1.x509.PolicyInformation;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.cms.SignerInformation;
+import org.bouncycastle.tsp.TimeStampToken;
+import org.bouncycastle.util.Store;
 
 import kz.edscheck.domain.Certificate;
 import kz.edscheck.domain.DocumentSource;
@@ -53,27 +60,26 @@ import kz.edscheck.msg.MsgKey;
 import kz.edscheck.provider.ArchiveTimestampInfo;
 import kz.edscheck.provider.KeyUsageInfo;
 import kz.edscheck.rules.KzEkuRoles;
+import kz.edscheck.trust.ActiveBackend;
 import kz.edscheck.trust.DigestAlgorithms;
 import kz.edscheck.trust.Digests;
 
 public final class Parsing {
-    private static final String PROV = "KALKAN";
+    private static final ASN1ObjectIdentifier OID_SIGNATURE_TS_TOKEN =
+        new ASN1ObjectIdentifier("1.2.840.113549.1.9.16.2.14");
+    private static final ASN1ObjectIdentifier OID_REVOCATION_VALUES =
+        new ASN1ObjectIdentifier("1.2.840.113549.1.9.16.2.24");
+    private static final ASN1ObjectIdentifier OID_ARCHIVE_TS_V1 =
+        new ASN1ObjectIdentifier("1.2.840.113549.1.9.16.2.27");
+    private static final ASN1ObjectIdentifier OID_ARCHIVE_TS_V2 =
+        new ASN1ObjectIdentifier("1.2.840.113549.1.9.16.2.48");
+    private static final ASN1ObjectIdentifier OID_ARCHIVE_TS_V3 =
+        new ASN1ObjectIdentifier("0.4.0.1733.2.4");
 
-    private static final DERObjectIdentifier OID_SIGNATURE_TS_TOKEN =
-        new DERObjectIdentifier("1.2.840.113549.1.9.16.2.14");
-    private static final DERObjectIdentifier OID_REVOCATION_VALUES =
-        new DERObjectIdentifier("1.2.840.113549.1.9.16.2.24");
-    private static final DERObjectIdentifier OID_ARCHIVE_TS_V1 =
-        new DERObjectIdentifier("1.2.840.113549.1.9.16.2.27");
-    private static final DERObjectIdentifier OID_ARCHIVE_TS_V2 =
-        new DERObjectIdentifier("1.2.840.113549.1.9.16.2.48");
-    private static final DERObjectIdentifier OID_ARCHIVE_TS_V3 =
-        new DERObjectIdentifier("0.4.0.1733.2.4");
+    private static final ASN1ObjectIdentifier OID_SIGNING_CERTIFICATE_V2 =
+        new ASN1ObjectIdentifier("1.2.840.113549.1.9.16.2.47");
 
-    private static final DERObjectIdentifier OID_SIGNING_CERTIFICATE_V2 =
-        new DERObjectIdentifier("1.2.840.113549.1.9.16.2.47");
-
-    private record MandatoryBbAttr(DERObjectIdentifier oid, String name) {
+    private record MandatoryBbAttr(ASN1ObjectIdentifier oid, String name) {
     }
 
     private static final List<MandatoryBbAttr> MANDATORY_BB_ATTRS = List.of(
@@ -83,16 +89,6 @@ public final class Parsing {
         new MandatoryBbAttr(OID_SIGNING_CERTIFICATE_V2, "signing-certificate-v2"));
 
     private static final String OID_KP_TIME_STAMPING = "1.3.6.1.5.5.7.3.8";
-    private static final DERObjectIdentifier OID_ORGANIZATION_IDENTIFIER =
-        new DERObjectIdentifier("2.5.4.97");
-    private static final String OID_RSA = "1.2.840.113549.1.1.1";
-    private static final String OID_KZ_PREFIX = "1.2.398";
-
-    static {
-        if (Security.getProvider(PROV) == null) {
-            Security.addProvider(new KalkanProvider());
-        }
-    }
 
     private Parsing() {
     }
@@ -185,7 +181,7 @@ public final class Parsing {
     }
 
     private record Decoded(
-            Encoding encoding, byte[] der, CMSSignedData sd, CertStore certStore,
+            Encoding encoding, byte[] der, CMSSignedData sd, Store<X509CertificateHolder> certStore,
             List<X509Certificate> containerCerts, Map<X500Principal, X509Certificate> bySubject,
             Collection<SignerInformation> signerInfos) {
     }
@@ -199,13 +195,14 @@ public final class Parsing {
             throw new ContainerException(Messages.get(MsgKey.CONTAINER_PARSE_CMS_FAILED, e.getMessage()), e);
         }
 
-        CertStore certStore;
+        Store<X509CertificateHolder> certStore;
         List<X509Certificate> containerCerts;
         try {
-            certStore = sd.getCertificatesAndCRLs("Collection", PROV);
+            certStore = sd.getCertificates();
             containerCerts = new ArrayList<>();
-            for (java.security.cert.Certificate c : certStore.getCertificates(null)) {
-                containerCerts.add((X509Certificate) c);
+            JcaX509CertificateConverter converter = new JcaX509CertificateConverter().setProvider(ActiveBackend.current().jceProviderName());
+            for (X509CertificateHolder h : certStore.getMatches(null)) {
+                containerCerts.add(converter.getCertificate(h));
             }
         } catch (Exception e) {
             throw new ContainerException(Messages.get(MsgKey.PARSING_CERTS_READ_FAILED, e.getMessage()), e);
@@ -221,9 +218,7 @@ public final class Parsing {
             }
         }
 
-        @SuppressWarnings("unchecked")
-        Collection<SignerInformation> signerInfos =
-            (Collection<SignerInformation>) sd.getSignerInfos().getSigners();
+        Collection<SignerInformation> signerInfos = sd.getSignerInfos().getSigners();
         if (signerInfos.isEmpty()) {
             throw new ContainerException(Messages.get(MsgKey.PARSING_NO_SIGNERS));
         }
@@ -233,7 +228,7 @@ public final class Parsing {
 
     private static ParsedContainer assembleParsedContainer(
             Encoding encoding, byte[] der, Collection<SignerInformation> signerInfos,
-            CertStore certStore, List<X509Certificate> containerCerts,
+            Store<X509CertificateHolder> certStore, List<X509Certificate> containerCerts,
             Map<X500Principal, X509Certificate> bySubject) {
         SignedDataContext sdContext = signedDataContext(der);
 
@@ -293,7 +288,7 @@ public final class Parsing {
                 continue;
             }
             try {
-                mdByOid.put(oid, MessageDigest.getInstance(jceName, PROV));
+                mdByOid.put(oid, MessageDigest.getInstance(jceName, ActiveBackend.current().jceProviderName()));
             } catch (Exception e) {
 
             }
@@ -307,14 +302,12 @@ public final class Parsing {
         for (Map.Entry<String, byte[]> e : digestsByOid.entrySet()) {
             CMSSignedData keyed;
             try {
-                keyed = new CMSSignedData(e.getValue(), der);
+                keyed = new CMSSignedData(Map.of(e.getKey(), e.getValue()), der);
             } catch (Exception ex) {
                 throw new ContainerException(
                     Messages.get(MsgKey.PARSING_BIND_DIGEST_FAILED, ex.getMessage()), ex);
             }
-            @SuppressWarnings("unchecked")
-            Collection<SignerInformation> keyedSigners =
-                (Collection<SignerInformation>) keyed.getSignerInfos().getSigners();
+            Collection<SignerInformation> keyedSigners = keyed.getSignerInfos().getSigners();
             Map<String, SignerInformation> bySignature = new HashMap<>();
             for (SignerInformation ksi : keyedSigners) {
                 String key = signerInfoSignatureKey(ksi);
@@ -443,11 +436,15 @@ public final class Parsing {
         return Messages.get(MsgKey.PARSING_CADES_LEVEL_BB);
     }
 
-    private static X509Certificate resolveSignerCert(CertStore certStore, SignerInformation si) {
+    private static X509Certificate resolveSignerCert(Store<X509CertificateHolder> certStore, SignerInformation si) {
         try {
-            Collection<? extends java.security.cert.Certificate> found =
-                certStore.getCertificates(si.getSID());
-            return found.isEmpty() ? null : (X509Certificate) found.iterator().next();
+
+            @SuppressWarnings("unchecked")
+            Collection<X509CertificateHolder> found = certStore.getMatches(si.getSID());
+            if (found.isEmpty()) {
+                return null;
+            }
+            return new JcaX509CertificateConverter().setProvider(ActiveBackend.current().jceProviderName()).getCertificate(found.iterator().next());
         } catch (Exception e) {
             return null;
         }
@@ -475,7 +472,7 @@ public final class Parsing {
     }
 
     public static Certificate certificateFields(X509Certificate cert) {
-        X509Name subject = x509Name(cert.getSubjectX500Principal());
+        X500Name subject = x500Name(cert.getSubjectX500Principal());
         KeyUsageInfo ku = keyUsageInfo(cert);
 
         List<String> sortedOids = new ArrayList<>(KzEkuRoles.ROLES.keySet());
@@ -488,10 +485,10 @@ public final class Parsing {
         }
 
         return new Certificate(
-            firstValue(subject, X509Name.CN),
-            stripPrefix(firstValue(subject, X509Name.SERIALNUMBER), "IIN"),
+            firstValue(subject, BCStyle.CN),
+            stripPrefix(firstValue(subject, BCStyle.SERIALNUMBER), "IIN"),
             extractBin(subject),
-            firstValue(subject, X509Name.O),
+            firstValue(subject, BCStyle.O),
             cert.getSerialNumber().toString(16),
             issuerHumanFriendly(cert),
             keyAlgorithm(cert),
@@ -501,22 +498,22 @@ public final class Parsing {
             cert.getNotAfter().toInstant());
     }
 
-    private static X509Name x509Name(X500Principal principal) {
+    private static X500Name x500Name(X500Principal principal) {
         try {
-            ASN1Sequence seq = (ASN1Sequence) new ASN1InputStream(principal.getEncoded()).readObject();
-            return X509Name.getInstance(seq);
+            return X500Name.getInstance(principal.getEncoded());
         } catch (Exception e) {
             return null;
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static String firstValue(X509Name name, DERObjectIdentifier oid) {
+    private static String firstValue(X500Name name, ASN1ObjectIdentifier oid) {
         if (name == null) {
             return null;
         }
-        var values = name.getValues(oid);
-        return values.isEmpty() ? null : (String) values.get(0);
+        for (String value : valuesOf(name, oid)) {
+            return value;
+        }
+        return null;
     }
 
     private static String stripPrefix(String value, String prefix) {
@@ -526,18 +523,32 @@ public final class Parsing {
         return value;
     }
 
-    @SuppressWarnings("unchecked")
-    private static String extractBin(X509Name name) {
+    private static List<String> valuesOf(X500Name name, ASN1ObjectIdentifier oid) {
+        List<String> out = new ArrayList<>();
+        for (RDN rdn : name.getRDNs(oid)) {
+            for (AttributeTypeAndValue atv : rdn.getTypesAndValues()) {
+                if (atv.getType().equals(oid)) {
+                    out.add(rawValue(atv.getValue()));
+                }
+            }
+        }
+        return out;
+    }
+
+    private static String rawValue(ASN1Encodable value) {
+        if (value instanceof ASN1String) {
+            return ((ASN1String) value).getString();
+        }
+        return value.toString();
+    }
+
+    private static String extractBin(X500Name name) {
         if (name == null) {
             return null;
         }
         List<String> candidates = new ArrayList<>();
-        for (Object v : name.getValues(X509Name.OU)) {
-            candidates.add((String) v);
-        }
-        for (Object v : name.getValues(OID_ORGANIZATION_IDENTIFIER)) {
-            candidates.add((String) v);
-        }
+        candidates.addAll(valuesOf(name, BCStyle.OU));
+        candidates.addAll(valuesOf(name, BCStyle.ORGANIZATION_IDENTIFIER));
         for (String value : candidates) {
             if (value != null && value.startsWith("BIN")) {
                 String rest = value.substring(3);
@@ -556,32 +567,31 @@ public final class Parsing {
 
     @SuppressWarnings("unchecked")
     private static String humanFriendlyName(X500Principal principal) {
-        X509Name name = x509Name(principal);
+        X500Name name = x500Name(principal);
         if (name == null) {
             return null;
         }
-        var oids = name.getOIDs();
-        var values = name.getValues();
         Map<String, Object> data = new LinkedHashMap<>();
         String lastField = null;
-        for (int i = 0; i < oids.size(); i++) {
-            DERObjectIdentifier oid = (DERObjectIdentifier) oids.get(i);
-            String label = FRIENDLY_LABELS.getOrDefault(oid.getId(), oid.getId());
-            Object value = values.get(i);
-            lastField = label;
-            Object existing = data.get(label);
-            if (existing == null && !data.containsKey(label)) {
-                data.put(label, value);
-            } else {
-                List<Object> list;
-                if (existing instanceof List) {
-                    list = (List<Object>) existing;
+        for (RDN rdn : name.getRDNs()) {
+            for (AttributeTypeAndValue atv : rdn.getTypesAndValues()) {
+                String label = FRIENDLY_LABELS.getOrDefault(atv.getType().getId(), atv.getType().getId());
+                String value = rawValue(atv.getValue());
+                lastField = label;
+                Object existing = data.get(label);
+                if (existing == null && !data.containsKey(label)) {
+                    data.put(label, value);
                 } else {
-                    list = new ArrayList<>();
-                    list.add(existing);
-                    data.put(label, list);
+                    List<Object> list;
+                    if (existing instanceof List) {
+                        list = (List<Object>) existing;
+                    } else {
+                        list = new ArrayList<>();
+                        list.add(existing);
+                        data.put(label, list);
+                    }
+                    list.add(value);
                 }
-                list.add(value);
             }
         }
 
@@ -614,15 +624,15 @@ public final class Parsing {
     }
 
     private static final Map<String, String> FRIENDLY_LABELS = Map.ofEntries(
-        Map.entry(X509Name.CN.getId(), "Common Name"),
-        Map.entry(X509Name.C.getId(), "Country"),
-        Map.entry(X509Name.O.getId(), "Organization"),
-        Map.entry(X509Name.OU.getId(), "Organizational Unit"),
-        Map.entry(X509Name.ST.getId(), "State/Province"),
-        Map.entry(X509Name.L.getId(), "Locality"),
-        Map.entry(X509Name.SERIALNUMBER.getId(), "Serial Number"),
-        Map.entry(X509Name.SURNAME.getId(), "Surname"),
-        Map.entry(X509Name.GIVENNAME.getId(), "Given Name"));
+        Map.entry(BCStyle.CN.getId(), "Common Name"),
+        Map.entry(BCStyle.C.getId(), "Country"),
+        Map.entry(BCStyle.O.getId(), "Organization"),
+        Map.entry(BCStyle.OU.getId(), "Organizational Unit"),
+        Map.entry(BCStyle.ST.getId(), "State/Province"),
+        Map.entry(BCStyle.L.getId(), "Locality"),
+        Map.entry(BCStyle.SERIALNUMBER.getId(), "Serial Number"),
+        Map.entry(BCStyle.SURNAME.getId(), "Surname"),
+        Map.entry(BCStyle.GIVENNAME.getId(), "Given Name"));
 
     private static KeyAlgorithm keyAlgorithm(X509Certificate cert) {
         return KeyAlgorithm.of(cert);
@@ -707,7 +717,7 @@ public final class Parsing {
         return null;
     }
 
-    private static boolean hasUnsignedAttr(SignerInformation si, DERObjectIdentifier oid) {
+    private static boolean hasUnsignedAttr(SignerInformation si, ASN1ObjectIdentifier oid) {
         AttributeTable ut = si.getUnsignedAttributes();
         if (ut == null) {
             return false;
@@ -739,32 +749,31 @@ public final class Parsing {
             return new TstInfo(null, true, null, null, null, List.of(), null, null, List.of());
         }
         try {
-            Object value = values.getObjectAt(0);
-            byte[] tokenDer = ((kz.gov.pki.kalkan.asn1.ASN1Encodable) value).getDEREncoded();
+            var value = values.getObjectAt(0);
+            byte[] tokenDer = value.toASN1Primitive().getEncoded(ASN1Encoding.DER);
 
             List<byte[]> tokenCrlBlobs = signedDataContext(tokenDer).crlBlobs();
             ContentInfo ci = ContentInfo.getInstance(value);
             TimeStampToken tst = new TimeStampToken(ci);
             var genTimeDate = tst.getTimeStampInfo().getGenTime();
             Instant genTime = genTimeDate != null ? genTimeDate.toInstant() : null;
-            String imprintAlg = tst.getTimeStampInfo().getMessageImprintAlgOID();
+            String imprintAlg = tst.getTimeStampInfo().getMessageImprintAlgOID().getId();
             byte[] imprintHash = tst.getTimeStampInfo().getMessageImprintDigest();
 
             Boolean ekuOk = null;
             X509Certificate tsaCert = null;
             List<X509Certificate> tsaCerts = List.of();
             CMSSignedData tstCms = new CMSSignedData(ci);
-            @SuppressWarnings("unchecked")
-            Collection<SignerInformation> tstSigners =
-                (Collection<SignerInformation>) tstCms.getSignerInfos().getSigners();
+            Collection<SignerInformation> tstSigners = tstCms.getSignerInfos().getSigners();
             if (!tstSigners.isEmpty()) {
                 SignerInformation tstSi = tstSigners.iterator().next();
-                CertStore tcs = tstCms.getCertificatesAndCRLs("Collection", PROV);
+                Store<X509CertificateHolder> tcs = tstCms.getCertificates();
                 tsaCerts = allCertsOf(tcs);
-                Collection<? extends java.security.cert.Certificate> found =
-                    tcs.getCertificates(tstSi.getSID());
+
+                @SuppressWarnings("unchecked")
+                Collection<X509CertificateHolder> found = tcs.getMatches(tstSi.getSID());
                 if (!found.isEmpty()) {
-                    tsaCert = (X509Certificate) found.iterator().next();
+                    tsaCert = new JcaX509CertificateConverter().setProvider(ActiveBackend.current().jceProviderName()).getCertificate(found.iterator().next());
                     try {
                         List<String> eku = tsaCert.getExtendedKeyUsage();
                         ekuOk = eku != null && eku.contains(OID_KP_TIME_STAMPING);
@@ -780,10 +789,11 @@ public final class Parsing {
         }
     }
 
-    private static List<X509Certificate> allCertsOf(CertStore certStore) throws Exception {
+    private static List<X509Certificate> allCertsOf(Store<X509CertificateHolder> certStore) throws Exception {
         List<X509Certificate> out = new ArrayList<>();
-        for (java.security.cert.Certificate c : certStore.getCertificates(null)) {
-            out.add((X509Certificate) c);
+        JcaX509CertificateConverter converter = new JcaX509CertificateConverter().setProvider(ActiveBackend.current().jceProviderName());
+        for (X509CertificateHolder h : certStore.getMatches(null)) {
+            out.add(converter.getCertificate(h));
         }
         return out;
     }
@@ -802,14 +812,13 @@ public final class Parsing {
             return EssBinding.NONE;
         }
         try {
-            var scv2 = kz.gov.pki.kalkan.asn1.ess.SigningCertificateV2.getInstance(
-                a.getAttrValues().getObjectAt(0));
+            var scv2 = SigningCertificateV2.getInstance(a.getAttrValues().getObjectAt(0));
             var certs = scv2.getCerts();
             if (certs.length == 0) {
                 return EssBinding.NONE;
             }
             var essId = certs[0];
-            return new EssBinding(essId.getHashAlgorithm().getObjectId().getId(), essId.getCertHash());
+            return new EssBinding(essId.getHashAlgorithm().getAlgorithm().getId(), essId.getCertHash());
         } catch (Exception e) {
             return EssBinding.NONE;
         }
@@ -820,15 +829,16 @@ public final class Parsing {
 
     private static SignedDataContext signedDataContext(byte[] der) {
         try {
-            var asn1 = new kz.gov.pki.kalkan.asn1.ASN1InputStream(der).readObject();
+            var asn1 = new ASN1InputStream(der).readObject();
             ContentInfo outer = ContentInfo.getInstance(asn1);
-            var signedData = kz.gov.pki.kalkan.asn1.cms.SignedData.getInstance(outer.getContent());
-            byte[] eContentTypeDer = signedData.getEncapContentInfo().getContentType().getDEREncoded();
+            SignedData signedData = SignedData.getInstance(outer.getContent());
+            byte[] eContentTypeDer =
+                signedData.getEncapContentInfo().getContentType().getEncoded(ASN1Encoding.DER);
             List<byte[]> crlBlobs = new ArrayList<>();
             ASN1Set crls = signedData.getCRLs();
             if (crls != null) {
                 for (int i = 0; i < crls.size(); i++) {
-                    crlBlobs.add(((kz.gov.pki.kalkan.asn1.ASN1Encodable) crls.getObjectAt(i)).getDEREncoded());
+                    crlBlobs.add(crls.getObjectAt(i).toASN1Primitive().getEncoded(ASN1Encoding.DER));
                 }
             }
             return new SignedDataContext(eContentTypeDer, crlBlobs);
@@ -859,7 +869,7 @@ public final class Parsing {
             new ArchiveTimestampInfo(v3Values.size(), legacyCount, lastGenTime), marks);
     }
 
-    private static List<Object> allAttributeValues(AttributeTable ut, DERObjectIdentifier oid) {
+    private static List<Object> allAttributeValues(AttributeTable ut, ASN1ObjectIdentifier oid) {
         List<Object> out = new ArrayList<>();
         ASN1EncodableVector all = ut.getAll(oid);
         for (int i = 0; i < all.size(); i++) {

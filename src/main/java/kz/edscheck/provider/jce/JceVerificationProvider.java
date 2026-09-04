@@ -1,4 +1,4 @@
-package kz.edscheck.provider.kalkan;
+package kz.edscheck.provider.jce;
 
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -37,23 +37,28 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import javax.security.auth.x500.X500Principal;
 
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.ASN1Sequence;
-import kz.gov.pki.kalkan.asn1.ASN1TaggedObject;
-import kz.gov.pki.kalkan.asn1.DEREncodable;
-import kz.gov.pki.kalkan.asn1.DERObjectIdentifier;
-import kz.gov.pki.kalkan.asn1.cms.Attribute;
-import kz.gov.pki.kalkan.asn1.cms.AttributeTable;
-import kz.gov.pki.kalkan.asn1.cms.ContentInfo;
-import kz.gov.pki.kalkan.asn1.ocsp.BasicOCSPResponse;
-import kz.gov.pki.kalkan.jce.provider.cms.CMSSignedData;
-import kz.gov.pki.kalkan.jce.provider.cms.SignerInformation;
-import kz.gov.pki.kalkan.ocsp.BasicOCSPResp;
-import kz.gov.pki.kalkan.ocsp.CertificateID;
-import kz.gov.pki.kalkan.ocsp.OCSPResp;
-import kz.gov.pki.kalkan.ocsp.RevokedStatus;
-import kz.gov.pki.kalkan.ocsp.SingleResp;
-import kz.gov.pki.kalkan.tsp.TimeStampToken;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1Encoding;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.ASN1TaggedObject;
+import org.bouncycastle.asn1.cms.Attribute;
+import org.bouncycastle.asn1.cms.AttributeTable;
+import org.bouncycastle.asn1.cms.ContentInfo;
+import org.bouncycastle.asn1.ocsp.BasicOCSPResponse;
+import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.cms.CMSSignerDigestMismatchException;
+import org.bouncycastle.cms.SignerInformation;
+import org.bouncycastle.cert.ocsp.BasicOCSPResp;
+import org.bouncycastle.cert.ocsp.CertificateID;
+import org.bouncycastle.cert.ocsp.OCSPResp;
+import org.bouncycastle.cert.ocsp.RevokedStatus;
+import org.bouncycastle.cert.ocsp.SingleResp;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.operator.DigestCalculator;
+import org.bouncycastle.operator.OperatorCreationException;
+import org.bouncycastle.tsp.TimeStampToken;
 
 import kz.edscheck.domain.CheckStatus;
 import kz.edscheck.domain.DocumentSource;
@@ -77,36 +82,31 @@ import kz.edscheck.provider.StageOutcome;
 import kz.edscheck.provider.TimestampInfo;
 import kz.edscheck.provider.VerificationProvider;
 import kz.edscheck.trace.Trace;
+import kz.edscheck.trust.ActiveBackend;
 import kz.edscheck.trust.Authorities;
 import kz.edscheck.trust.DigestAlgorithms;
-import kz.edscheck.trust.KalkanProviderRegistrar;
 import kz.edscheck.trust.ManifestTrust;
 
-public final class KalkanProvider implements VerificationProvider {
-    private static final String PROV = "KALKAN";
+public final class JceVerificationProvider implements VerificationProvider {
     private static final Set<Stage> CAPABILITIES = Set.of(
         Stage.INTEGRITY, Stage.TIMESTAMP, Stage.CHAIN, Stage.REVOCATION, Stage.ARCHIVE_TIMESTAMP);
 
-    private static final DERObjectIdentifier OID_SIGTST =
-        new DERObjectIdentifier("1.2.840.113549.1.9.16.2.14");
-    private static final DERObjectIdentifier OID_REVVALUES =
-        new DERObjectIdentifier("1.2.840.113549.1.9.16.2.24");
+    private static final ASN1ObjectIdentifier OID_SIGTST =
+        new ASN1ObjectIdentifier("1.2.840.113549.1.9.16.2.14");
+    private static final ASN1ObjectIdentifier OID_REVVALUES =
+        new ASN1ObjectIdentifier("1.2.840.113549.1.9.16.2.24");
     private static final String OID_OCSP_SIGNING = "1.3.6.1.5.5.7.3.9";
 
     private static final int TAG_CRL_VALS = 0;
     private static final int TAG_OCSP_VALS = 1;
 
-    static {
-        KalkanProviderRegistrar.ensureSecurityProviderRegistered();
-    }
-
     private final Trace trace;
 
-    public KalkanProvider() {
+    public JceVerificationProvider() {
         this(Trace.NONE);
     }
 
-    public KalkanProvider(Trace trace) {
+    public JceVerificationProvider(Trace trace) {
         this.trace = trace;
     }
 
@@ -301,12 +301,17 @@ public final class KalkanProvider implements VerificationProvider {
 
     private StageOutcome integrityOutcome(ParsedSigner ps, X509Certificate signerCert) {
         try {
-            boolean ok = ps.signerInfo().verify(signerCert.getPublicKey(), PROV);
+            boolean ok = CmsBridge.verify(ps.signerInfo(), signerCert, ActiveBackend.current().jceProviderName());
             trace.v(label(ps) + ": " + (ok
                 ? Messages.get(MsgKey.PROVIDER_TRACE_INTEGRITY_OK)
                 : Messages.get(MsgKey.PROVIDER_TRACE_INTEGRITY_MISMATCH)));
             return ok ? new StageOutcome(CheckStatus.PASS)
                       : new StageOutcome(CheckStatus.FAIL, Messages.get(MsgKey.PROVIDER_INTEGRITY_MISMATCH));
+        } catch (CMSSignerDigestMismatchException e) {
+
+            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_INTEGRITY_ERROR,
+                e.getClass().getSimpleName() + ": " + e.getMessage()));
+            return new StageOutcome(CheckStatus.FAIL, Messages.get(MsgKey.PROVIDER_INTEGRITY_DIGEST_MISMATCH));
         } catch (Exception e) {
 
             trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_INTEGRITY_ERROR,
@@ -332,7 +337,7 @@ public final class KalkanProvider implements VerificationProvider {
                     Messages.get(MsgKey.PROVIDER_ESS_UNKNOWN_ALG, essAlg)), List.of());
             }
             try {
-                MessageDigest md = MessageDigest.getInstance(mdName, PROV);
+                MessageDigest md = MessageDigest.getInstance(mdName, ActiveBackend.current().jceProviderName());
                 byte[] calc = md.digest(signerCert.getEncoded());
                 if (!Arrays.equals(calc, essHash)) {
                     trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_ESS_HASH_MISMATCH, mdName));
@@ -410,12 +415,11 @@ public final class KalkanProvider implements VerificationProvider {
             }
             ContentInfo ci = ContentInfo.getInstance(tstAttr.getAttrValues().getObjectAt(0));
             CMSSignedData tstCms = new CMSSignedData(ci);
-            SignerInformation tstSi =
-                (SignerInformation) tstCms.getSignerInfos().getSigners().iterator().next();
+            SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
             X509Certificate tsaCert = ps.tsaCertRaw();
 
             try {
-                sigOk = tstSi.verify(tsaCert.getPublicKey(), PROV);
+                sigOk = CmsBridge.verify(tstSi, tsaCert, ActiveBackend.current().jceProviderName());
             } catch (Exception e) {
                 sigOk = false;
             }
@@ -427,7 +431,7 @@ public final class KalkanProvider implements VerificationProvider {
             if (mdName == null) {
                 bindingOk = false;
             } else {
-                MessageDigest md = MessageDigest.getInstance(mdName, PROV);
+                MessageDigest md = MessageDigest.getInstance(mdName, ActiveBackend.current().jceProviderName());
                 byte[] calc = md.digest(ps.signatureValue());
                 bindingOk = Arrays.equals(calc, ps.tstImprintHash());
             }
@@ -591,7 +595,7 @@ public final class KalkanProvider implements VerificationProvider {
             }
         }
         try {
-            CertificateFactory cf = CertificateFactory.getInstance("X.509", PROV);
+            CertificateFactory cf = CertificateFactory.getInstance("X.509", ActiveBackend.current().jceProviderName());
             for (byte[] der : crlBlobs) {
                 try {
                     X509CRL crl = (X509CRL) cf.generateCRL(new java.io.ByteArrayInputStream(der));
@@ -683,7 +687,7 @@ public final class KalkanProvider implements VerificationProvider {
             }
             ContentInfo ci = ContentInfo.getInstance(tstAttr.getAttrValues().getObjectAt(0));
             CMSSignedData tstCms = new CMSSignedData(ci);
-            SignerInformation tstSi = (SignerInformation) tstCms.getSignerInfos().getSigners().iterator().next();
+            SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
             AttributeTable tstUt = tstSi.getUnsignedAttributes();
             Attribute revAttr = tstUt == null ? null : tstUt.get(OID_REVVALUES);
             return new TstFacts(tstSi.getDigestAlgOID(), revAttr);
@@ -697,7 +701,7 @@ public final class KalkanProvider implements VerificationProvider {
             var asn1 = new ASN1InputStream(mark.tstDer).readObject();
             ContentInfo ci = ContentInfo.getInstance(asn1);
             CMSSignedData tstCms = new CMSSignedData(ci);
-            SignerInformation tstSi = (SignerInformation) tstCms.getSignerInfos().getSigners().iterator().next();
+            SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
             AttributeTable tstUt = tstSi.getUnsignedAttributes();
             Attribute revAttr = tstUt == null ? null : tstUt.get(OID_REVVALUES);
             return new TstFacts(tstSi.getDigestAlgOID(), revAttr);
@@ -915,13 +919,13 @@ public final class KalkanProvider implements VerificationProvider {
             List<X509Certificate> containerCerts, Instant refTime, boolean ignoreTruststore,
             RevocationSource source, String label) {
         try {
-            X509Certificate[] respCerts = basic.getCerts(PROV);
+            X509Certificate[] respCerts = CmsBridge.certsOf(basic, ActiveBackend.current().jceProviderName());
             X509Certificate responder = (respCerts != null && respCerts.length > 0) ? respCerts[0] : null;
             if (responder == null) {
                 trace.v(label + ": " + Messages.get(MsgKey.PROVIDER_TRACE_OCSP_RESPONDER_MISSING));
                 return revFail(source, Messages.get(MsgKey.PROVIDER_REVOCATION_OCSP_RESPONDER_MISSING));
             }
-            if (!basic.verify(responder.getPublicKey(), PROV)) {
+            if (!basic.isSignatureValid(CmsBridge.contentVerifierProvider(responder, ActiveBackend.current().jceProviderName()))) {
                 trace.v(label + ": " + Messages.get(MsgKey.PROVIDER_TRACE_OCSP_SIGNATURE_FAILED));
                 return revFail(source, Messages.get(MsgKey.PROVIDER_REVOCATION_OCSP_SIGNATURE_FAILED));
             }
@@ -954,8 +958,8 @@ public final class KalkanProvider implements VerificationProvider {
             for (SingleResp sr : basic.getResponses()) {
                 CertificateID respId = sr.getCertID();
                 try {
-                    CertificateID expectedId = new CertificateID(
-                        respId.getHashAlgOID(), issuerCert, signerCert.getSerialNumber(), PROV);
+                    CertificateID expectedId = CmsBridge.certificateId(
+                        respId.getHashAlgOID(), issuerCert, signerCert.getSerialNumber(), ActiveBackend.current().jceProviderName());
                     if (expectedId.equals(respId)) {
                         match = sr;
                         break;
@@ -1014,7 +1018,7 @@ public final class KalkanProvider implements VerificationProvider {
             Instant refTime, boolean ignoreTruststore, String crlPath, String label) {
         X509CRL crl;
         try {
-            CertificateFactory cf = CertificateFactory.getInstance("X.509", PROV);
+            CertificateFactory cf = CertificateFactory.getInstance("X.509", ActiveBackend.current().jceProviderName());
             try (InputStream in = new FileInputStream(crlPath)) {
                 crl = (X509CRL) cf.generateCRL(in);
             }
@@ -1043,7 +1047,7 @@ public final class KalkanProvider implements VerificationProvider {
                     .detail(Messages.get(MsgKey.PROVIDER_REVOCATION_CRL_ISSUER_NOT_FOUND)).build();
             }
             try {
-                crl.verify(issuer.getPublicKey(), PROV);
+                crl.verify(issuer.getPublicKey(), ActiveBackend.current().jceProviderName());
             } catch (Exception e) {
                 trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_SIGNATURE_FAILED,
                     crlLabel, rootMessage(e)));
@@ -1092,7 +1096,7 @@ public final class KalkanProvider implements VerificationProvider {
 
         ASN1Sequence rv = ASN1Sequence.getInstance(revValues.getAttrValues().getObjectAt(0));
         for (int i = 0; i < rv.size(); i++) {
-            DEREncodable e = rv.getObjectAt(i);
+            ASN1Encodable e = rv.getObjectAt(i);
             if (e instanceof ASN1TaggedObject t && t.getTagNo() == 1) {
                 ASN1Sequence ocspVals = ASN1Sequence.getInstance(t, true);
                 List<BasicOCSPResp> out = new ArrayList<>();
@@ -1110,7 +1114,7 @@ public final class KalkanProvider implements VerificationProvider {
         try {
             ASN1Sequence rv = ASN1Sequence.getInstance(revValues.getAttrValues().getObjectAt(0));
             for (int i = 0; i < rv.size(); i++) {
-                DEREncodable e = rv.getObjectAt(i);
+                ASN1Encodable e = rv.getObjectAt(i);
                 if (e instanceof ASN1TaggedObject t && t.getTagNo() == tagNo) {
                     ASN1Sequence inner = ASN1Sequence.getInstance(t, true);
                     if (inner.size() > 0) {
@@ -1127,7 +1131,7 @@ public final class KalkanProvider implements VerificationProvider {
     X509CRL extractEmbeddedCrlForSigner(Attribute revValues, X509Certificate signerCert, String signerLabel) {
         CertificateFactory cf;
         try {
-            cf = CertificateFactory.getInstance("X.509", PROV);
+            cf = CertificateFactory.getInstance("X.509", ActiveBackend.current().jceProviderName());
         } catch (Exception e) {
             return null;
         }
@@ -1135,17 +1139,17 @@ public final class KalkanProvider implements VerificationProvider {
             ASN1Sequence rv = ASN1Sequence.getInstance(revValues.getAttrValues().getObjectAt(0));
             int index = 0;
             for (int i = 0; i < rv.size(); i++) {
-                DEREncodable e = rv.getObjectAt(i);
+                ASN1Encodable e = rv.getObjectAt(i);
                 if (!(e instanceof ASN1TaggedObject t) || t.getTagNo() != TAG_CRL_VALS) {
                     continue;
                 }
                 ASN1Sequence crlVals = ASN1Sequence.getInstance(t, true);
                 for (int j = 0; j < crlVals.size(); j++) {
                     index++;
-                    DEREncodable certListObj = crlVals.getObjectAt(j);
+                    ASN1Encodable certListObj = crlVals.getObjectAt(j);
                     X509CRL crl;
                     try {
-                        byte[] der = certListObj.getDERObject().getDEREncoded();
+                        byte[] der = certListObj.toASN1Primitive().getEncoded(ASN1Encoding.DER);
                         crl = (X509CRL) cf.generateCRL(new java.io.ByteArrayInputStream(der));
                     } catch (Exception parseEx) {
                         trace.v(signerLabel + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CRL_EMBEDDED_SKIPPED,
@@ -1183,10 +1187,9 @@ public final class KalkanProvider implements VerificationProvider {
                     var asn1 = new ASN1InputStream(mark.tstDer).readObject();
                     ContentInfo ci = ContentInfo.getInstance(asn1);
                     CMSSignedData tstCms = new CMSSignedData(ci);
-                    SignerInformation tstSi =
-                        (SignerInformation) tstCms.getSignerInfos().getSigners().iterator().next();
+                    SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
                     try {
-                        sigOk = tstSi.verify(mark.tsaCert.getPublicKey(), PROV);
+                        sigOk = CmsBridge.verify(tstSi, mark.tsaCert, ActiveBackend.current().jceProviderName());
                     } catch (Exception e) {
                         sigOk = false;
                     }
@@ -1244,7 +1247,7 @@ public final class KalkanProvider implements VerificationProvider {
         try {
             List<byte[]> out = new ArrayList<>();
             for (byte[] b : blobs) {
-                MessageDigest md = MessageDigest.getInstance(mdName, PROV);
+                MessageDigest md = MessageDigest.getInstance(mdName, ActiveBackend.current().jceProviderName());
                 out.add(md.digest(b));
             }
             return out;
@@ -1262,7 +1265,7 @@ public final class KalkanProvider implements VerificationProvider {
             return null;
         }
         try {
-            MessageDigest md = MessageDigest.getInstance(mdName, PROV);
+            MessageDigest md = MessageDigest.getInstance(mdName, ActiveBackend.current().jceProviderName());
             return md.digest(blob);
         } catch (Exception e) {
             return null;
@@ -1384,10 +1387,10 @@ public final class KalkanProvider implements VerificationProvider {
                 }
             }
         }
-        CertStore cs = CertStore.getInstance("Collection", new CollectionCertStoreParameters(pool), PROV);
+        CertStore cs = CertStore.getInstance("Collection", new CollectionCertStoreParameters(pool), ActiveBackend.current().jceProviderName());
         params.addCertStore(cs);
 
-        CertPathBuilder builder = CertPathBuilder.getInstance("PKIX", PROV);
+        CertPathBuilder builder = CertPathBuilder.getInstance("PKIX", ActiveBackend.current().jceProviderName());
         CertPathBuilderResult result = builder.build(params); 
         PKIXCertPathBuilderResult pkixResult = (PKIXCertPathBuilderResult) result;
 
@@ -1447,6 +1450,22 @@ public final class KalkanProvider implements VerificationProvider {
             }
         }
         return null;
+    }
+
+    public static boolean verifySignerInfo(SignerInformation si, X509Certificate cert, String provider)
+            throws Exception {
+        return CmsBridge.verify(si, cert, provider);
+    }
+
+    public static CertificateID certificateId(
+            ASN1ObjectIdentifier hashAlgOid, X509Certificate issuer, BigInteger serial, String provider)
+            throws Exception {
+        return CmsBridge.certificateId(hashAlgOid, issuer, serial, provider);
+    }
+
+    public static DigestCalculator digestCalculator(AlgorithmIdentifier alg, String provider)
+            throws OperatorCreationException {
+        return CmsBridge.digestCalculator(alg, provider);
     }
 
     public static boolean hasOcspSigning(X509Certificate cert) {

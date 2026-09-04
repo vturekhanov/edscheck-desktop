@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -91,6 +92,8 @@ public final class MainPanel extends JPanel {
 
     private static final String SPECIALIST_URL =
         "https://sigex.kz/blog/2021-01-25-digital-signatures-in-courts/#where-to-find-experts";
+
+    private static final String SDK_URL = "https://sdk.pki.gov.kz";
 
     private static final DateTimeFormatter DT_FMT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx", Locale.ROOT);
@@ -159,6 +162,8 @@ public final class MainPanel extends JPanel {
     private static final int SIGNED_CONTENT_MAX_CHARACTERS = 100_000;
 
     private final CheckService checkService;
+
+    private final boolean informationalMode;
     final JButton chooseButton;
     final JLabel statusLabel;
     final JProgressBar busyIndicator;
@@ -179,9 +184,10 @@ public final class MainPanel extends JPanel {
 
     private boolean showingEmptyStateHint;
 
-    public MainPanel(CheckService checkService) {
+    public MainPanel(CheckService checkService, boolean informationalMode) {
         super(new BorderLayout(8, 8));
         this.checkService = checkService;
+        this.informationalMode = informationalMode;
 
         chooseButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_CHOOSE_FILE));
         chooseButton.addActionListener(e -> onChooseFile());
@@ -239,10 +245,29 @@ public final class MainPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         add(north, BorderLayout.NORTH);
         add(new JScrollPane(resultsContainer), BorderLayout.CENTER);
-        add(footerPane, BorderLayout.SOUTH);
+        add(buildFooterRow(), BorderLayout.SOUTH);
 
         setTransferHandler(new FileDropHandler());
         showEmptyStateHint();
+    }
+
+    private JComponent buildFooterRow() {
+        if (!informationalMode) {
+            return footerPane;
+        }
+        int size = 18;
+        JLabel icon;
+        if (colorEmojiSupported() && EMOJI_FONT_FAMILY != null) {
+            icon = new JLabel(glyphFor(Kind.WARN));
+            icon.setFont(new Font(EMOJI_FONT_FAMILY, Font.PLAIN, size));
+        } else {
+            icon = new JLabel(iconFor(Kind.WARN, size));
+        }
+        icon.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 8));
+        Box row = Box.createHorizontalBox();
+        row.add(icon);
+        row.add(footerPane);
+        return row;
     }
 
     private JLabel buildFooter() {
@@ -268,12 +293,17 @@ public final class MainPanel extends JPanel {
         return label;
     }
 
-    private static String footerText() {
+    private String footerText() {
         Color linkColor = UIManager.getColor("Label.foreground");
-        String link = "<a href=\"" + SPECIALIST_URL + "\" style=\"color: rgb("
+
+        String url = informationalMode ? SDK_URL : SPECIALIST_URL;
+        GuiMsgKey linkTextKey = informationalMode
+            ? GuiMsgKey.FOOTER_INFORMATIONAL_LINK_TEXT : GuiMsgKey.FOOTER_DISCLAIMER_LINK_TEXT;
+        GuiMsgKey textKey = informationalMode ? GuiMsgKey.FOOTER_INFORMATIONAL : GuiMsgKey.FOOTER_DISCLAIMER;
+        String link = "<a href=\"" + url + "\" style=\"color: rgb("
             + linkColor.getRed() + "," + linkColor.getGreen() + "," + linkColor.getBlue() + ");\">"
-            + GuiMessages.get(GuiMsgKey.FOOTER_DISCLAIMER_LINK_TEXT) + "</a>";
-        return "<html>" + GuiMessages.get(GuiMsgKey.FOOTER_DISCLAIMER, link) + "</html>";
+            + GuiMessages.get(linkTextKey) + "</a>";
+        return "<html>" + GuiMessages.get(textKey, link) + "</html>";
     }
 
     @Override
@@ -583,13 +613,27 @@ public final class MainPanel extends JPanel {
         };
         Component glueTop = Box.createVerticalGlue();
         Component glueBottom = Box.createVerticalGlue();
-        for (Component c : List.of(hint, glueTop, glueBottom)) {
-            c.addMouseListener(opener);
-        }
+        List<Component> clickable = new ArrayList<>(List.of(hint, glueTop, glueBottom));
 
         resultsContainer.add(glueTop);
         resultsContainer.add(hint);
+        if (informationalMode) {
+
+            resultsContainer.add(Box.createVerticalStrut(12));
+            JLabel warningText = new JLabel("<html><div style=\"text-align:center\">"
+                + GuiMessages.get(GuiMsgKey.EMPTY_STATE_INFORMATIONAL_WARNING) + "</div></html>");
+
+            warningText.setForeground(UIManager.getColor("Label.disabledForeground"));
+            warningText.setHorizontalAlignment(SwingConstants.CENTER);
+            warningText.setAlignmentX(Component.CENTER_ALIGNMENT);
+            resultsContainer.add(warningText);
+            clickable.add(warningText);
+        }
         resultsContainer.add(glueBottom);
+
+        for (Component c : clickable) {
+            c.addMouseListener(opener);
+        }
         resultsContainer.revalidate();
         resultsContainer.repaint();
         showingEmptyStateHint = true;

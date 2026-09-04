@@ -9,11 +9,11 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Locale;
 
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.ASN1OctetString;
-import kz.gov.pki.kalkan.asn1.DEREncodable;
-import kz.gov.pki.kalkan.asn1.cms.ContentInfo;
-import kz.gov.pki.kalkan.asn1.cms.SignedData;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.cms.ContentInfo;
+import org.bouncycastle.asn1.cms.SignedData;
 
 import kz.edscheck.domain.DocumentSource;
 import kz.edscheck.errors.ContainerException;
@@ -92,7 +92,7 @@ public final class ContentExtraction {
         }
         ContentInfo outer = ContentInfo.getInstance(asn1);
         SignedData signedData = SignedData.getInstance(outer.getContent());
-        DEREncodable content = signedData.getEncapContentInfo().getContent();
+        ASN1Encodable content = signedData.getEncapContentInfo().getContent();
         ASN1OctetString octets = ASN1OctetString.getInstance(content);
         return octets.getOctets();
     }

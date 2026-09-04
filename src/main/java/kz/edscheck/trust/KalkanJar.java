@@ -21,6 +21,16 @@ public final class KalkanJar {
     private KalkanJar() {
     }
 
+    public static boolean classAvailable() {
+        try {
+            Class.forName("kz.gov.pki.kalkan.jce.provider.KalkanProvider", false,
+                KalkanJar.class.getClassLoader());
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+    }
+
     public static Path resolveFromSystemProperty() throws KalkanJarException {
         String raw = System.getProperty(PATH_PROPERTY);
         if (raw == null || raw.isBlank()) {

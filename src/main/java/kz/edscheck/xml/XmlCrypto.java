@@ -1,16 +1,15 @@
 package kz.edscheck.xml;
 
-import static kz.edscheck.provider.kalkan.KalkanProvider.buildPath;
-import static kz.edscheck.provider.kalkan.KalkanProvider.findBySubject;
-import static kz.edscheck.provider.kalkan.KalkanProvider.resolveAnchor;
-import static kz.edscheck.provider.kalkan.KalkanProvider.toInstant;
+import static kz.edscheck.provider.jce.JceVerificationProvider.buildPath;
+import static kz.edscheck.provider.jce.JceVerificationProvider.findBySubject;
+import static kz.edscheck.provider.jce.JceVerificationProvider.resolveAnchor;
+import static kz.edscheck.provider.jce.JceVerificationProvider.toInstant;
+import static kz.edscheck.provider.jce.JceVerificationProvider.verifySignerInfo;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
-import java.security.Security;
 import java.security.Signature;
-import java.security.cert.CertStore;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
@@ -49,16 +48,20 @@ import kz.edscheck.msg.MsgKey;
 import kz.edscheck.provider.CaRevocationFact;
 import kz.edscheck.provider.StageOutcome;
 import kz.edscheck.provider.TimestampInfo;
-import kz.edscheck.provider.kalkan.KalkanProvider.AnchorInfo;
+import kz.edscheck.provider.jce.JceVerificationProvider.AnchorInfo;
 import kz.edscheck.trace.Trace;
 import kz.edscheck.trust.Authorities;
 import kz.edscheck.trust.DigestAlgorithms;
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.cms.ContentInfo;
-import kz.gov.pki.kalkan.jce.provider.KalkanProvider;
-import kz.gov.pki.kalkan.jce.provider.cms.CMSSignedData;
-import kz.gov.pki.kalkan.jce.provider.cms.SignerInformation;
-import kz.gov.pki.kalkan.tsp.TimeStampToken;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.cms.ContentInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.cms.SignerInformation;
+import org.bouncycastle.tsp.TimeStampToken;
+import org.bouncycastle.util.Store;
+
+import kz.edscheck.trust.ActiveBackend;
 
 final class XmlCrypto {
     private static final String XPATH_FILTER2_TRANSFORM_CLASS =
@@ -81,12 +84,9 @@ final class XmlCrypto {
         if (initialized) {
             return;
         }
-        if (Security.getProvider("KALKAN") == null) {
-            Security.addProvider(new KalkanProvider());
-        }
 
         Init.init();
-        JCEMapper.setProviderId("KALKAN");
+        JCEMapper.setProviderId(ActiveBackend.current().jceProviderName());
         JCEMapper.register(GOST_DIGEST_URI_2015,
             new JCEMapper.Algorithm(null, GOST_DIGEST_JCE_NAME_2015, "MessageDigest"));
         JCEMapper.register(GOST_DIGEST_URI_2004,
@@ -130,25 +130,26 @@ final class XmlCrypto {
             ASN1InputStream ain = new ASN1InputStream(ps.signatureTimestampToken());
             ContentInfo ci = ContentInfo.getInstance(ain.readObject());
             CMSSignedData tstCms = new CMSSignedData(ci);
-            SignerInformation tstSi = (SignerInformation) tstCms.getSignerInfos().getSigners().iterator().next();
+            SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
             TimeStampToken tst = new TimeStampToken(ci);
             Instant genTime = tst.getTimeStampInfo().getGenTime() == null ? null
                 : tst.getTimeStampInfo().getGenTime().toInstant();
 
-            CertStore certStore = tstCms.getCertificatesAndCRLs("Collection", "KALKAN");
+            Store<X509CertificateHolder> certStore = tstCms.getCertificates();
+            JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
+
             @SuppressWarnings("unchecked")
-            Collection<? extends java.security.cert.Certificate> tsaCertColl =
-                (Collection<? extends java.security.cert.Certificate>) certStore.getCertificates(tstSi.getSID());
-            X509Certificate tsaCert = tsaCertColl.isEmpty() ? null : (X509Certificate) tsaCertColl.iterator().next();
+            Collection<X509CertificateHolder> tsaCertColl = certStore.getMatches(tstSi.getSID());
+            X509Certificate tsaCert = tsaCertColl.isEmpty() ? null : converter.getCertificate(tsaCertColl.iterator().next());
             List<X509Certificate> tsaCerts = new ArrayList<>();
-            for (java.security.cert.Certificate c : certStore.getCertificates(null)) {
-                tsaCerts.add((X509Certificate) c);
+            for (X509CertificateHolder h : certStore.getMatches(null)) {
+                tsaCerts.add(converter.getCertificate(h));
             }
             String tsaCertName = tsaCert == null ? "?" : tsaCert.getSubjectX500Principal().getName();
 
             Boolean sigOk;
             try {
-                sigOk = tsaCert != null && tstSi.verify(tsaCert.getPublicKey(), "KALKAN");
+                sigOk = tsaCert != null && verifySignerInfo(tstSi, tsaCert, ActiveBackend.current().jceProviderName());
             } catch (Exception e) {
                 sigOk = false;
             }
@@ -156,14 +157,14 @@ final class XmlCrypto {
                 ? Messages.get(MsgKey.PROVIDER_TRACE_TST_SIGNATURE_OK, tsaCertName)
                 : Messages.get(MsgKey.PROVIDER_TRACE_TST_SIGNATURE_FAIL, tsaCertName)));
 
-            String jceName = DigestAlgorithms.jceName(tst.getTimeStampInfo().getMessageImprintAlgOID());
+            String jceName = DigestAlgorithms.jceName(tst.getTimeStampInfo().getMessageImprintAlgOID().getId());
             Boolean bindingOk;
             if (jceName == null || ps.signatureTimestampCanonicalizationMethod() == null) {
                 bindingOk = false;
             } else {
                 byte[] canonSv = canonicalizeSignatureValue(
                     signatureElement, ps.signatureTimestampCanonicalizationMethod());
-                MessageDigest md = MessageDigest.getInstance(jceName, "KALKAN");
+                MessageDigest md = MessageDigest.getInstance(jceName, ActiveBackend.current().jceProviderName());
                 byte[] calc = md.digest(canonSv);
                 bindingOk = Arrays.equals(calc, tst.getTimeStampInfo().getMessageImprintDigest());
             }
@@ -195,7 +196,7 @@ final class XmlCrypto {
             }
 
             String tsaLabel = label + Messages.get(MsgKey.PROVIDER_LABEL_TSA_CERT_SUFFIX);
-            kz.edscheck.provider.kalkan.KalkanProvider kp = new kz.edscheck.provider.kalkan.KalkanProvider(trace);
+            kz.edscheck.provider.jce.JceVerificationProvider kp = new kz.edscheck.provider.jce.JceVerificationProvider(trace);
 
             List<CaRevocationFact> intermediateCaRevocations = Boolean.TRUE.equals(chainOk)
                 ? kp.intermediateCaRevocationsForBag(tsaPath, ps.ocspValues(), ps.crlValues(), pool, trust,
@@ -248,15 +249,16 @@ final class XmlCrypto {
             ASN1InputStream ain = new ASN1InputStream(tstDer);
             ContentInfo ci = ContentInfo.getInstance(ain.readObject());
             CMSSignedData tstCms = new CMSSignedData(ci);
-            SignerInformation tstSi = (SignerInformation) tstCms.getSignerInfos().getSigners().iterator().next();
-            CertStore certStore = tstCms.getCertificatesAndCRLs("Collection", "KALKAN");
+            SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
+            Store<X509CertificateHolder> certStore = tstCms.getCertificates();
+            JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
+
             @SuppressWarnings("unchecked")
-            Collection<? extends java.security.cert.Certificate> tsaCertColl =
-                (Collection<? extends java.security.cert.Certificate>) certStore.getCertificates(tstSi.getSID());
-            X509Certificate tsaCert = tsaCertColl.isEmpty() ? null : (X509Certificate) tsaCertColl.iterator().next();
+            Collection<X509CertificateHolder> tsaCertColl = certStore.getMatches(tstSi.getSID());
+            X509Certificate tsaCert = tsaCertColl.isEmpty() ? null : converter.getCertificate(tsaCertColl.iterator().next());
             List<X509Certificate> tsaCerts = new ArrayList<>();
-            for (java.security.cert.Certificate c : certStore.getCertificates(null)) {
-                tsaCerts.add((X509Certificate) c);
+            for (X509CertificateHolder h : certStore.getMatches(null)) {
+                tsaCerts.add(converter.getCertificate(h));
             }
             return new TsaCertInfo(tsaCert, tsaCerts);
         } catch (Exception e) {
@@ -369,7 +371,7 @@ final class XmlCrypto {
             return new XmlIntegrityResult(IntegrityOutcome.INVALID, List.of(), null);
         }
         try {
-            Signature sig = Signature.getInstance(ESF_SIGNATURE_ALGORITHM, "KALKAN");
+            Signature sig = Signature.getInstance(ESF_SIGNATURE_ALGORITHM, ActiveBackend.current().jceProviderName());
             sig.initVerify(invoice.certificateRaw().getPublicKey());
             sig.update(invoice.signedBytes());
             boolean valid = sig.verify(invoice.signatureValue());
@@ -433,7 +435,7 @@ final class XmlCrypto {
                 Messages.get(MsgKey.XML_SIGNING_CERT_MISMATCH));
         }
         try {
-            MessageDigest md = MessageDigest.getInstance(jceName, "KALKAN");
+            MessageDigest md = MessageDigest.getInstance(jceName, ActiveBackend.current().jceProviderName());
             byte[] actual = md.digest(certDer);
             boolean matched = Arrays.equals(actual, entry.digestValue());
             trace.v(label + ": " + Messages.get(
@@ -493,7 +495,7 @@ final class XmlCrypto {
         try {
             List<X509Certificate> path = buildPath(target, containerCerts, trust, refTime, ignoreTruststore);
             trace.v(label + ": " + Messages.get(MsgKey.PROVIDER_TRACE_CHAIN_BUILT));
-            kz.edscheck.provider.kalkan.KalkanProvider kp = new kz.edscheck.provider.kalkan.KalkanProvider(trace);
+            kz.edscheck.provider.jce.JceVerificationProvider kp = new kz.edscheck.provider.jce.JceVerificationProvider(trace);
             List<CaRevocationFact> facts = kp.intermediateCaRevocationsForBag(
                 path, ocspValues, crlValues, containerCerts, trust, refTime, crlPath, ignoreTruststore,
                 label, externalOcsp);

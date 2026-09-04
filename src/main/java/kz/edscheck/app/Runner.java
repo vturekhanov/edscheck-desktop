@@ -16,10 +16,13 @@ import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.provider.VerificationProvider;
 import kz.edscheck.provider.fake.FakeProvider;
-import kz.edscheck.provider.kalkan.KalkanProvider;
+import kz.edscheck.provider.jce.JceVerificationProvider;
 import kz.edscheck.rules.PolicyProfile;
 import kz.edscheck.trace.Trace;
-import kz.edscheck.trust.KalkanJar;
+import kz.edscheck.trust.ActiveBackend;
+import kz.edscheck.trust.BcBackend;
+import kz.edscheck.trust.CryptoBackend;
+import kz.edscheck.trust.KalkanBackend;
 import kz.edscheck.trust.KalkanJarException;
 import kz.edscheck.trust.LibraryJarException;
 import kz.edscheck.trust.LibraryJars;
@@ -77,9 +80,12 @@ public final class Runner {
     }
 
     private static VerificationProvider buildProvider(String ca, String engine, Trace trace)
-            throws KalkanJarException {
+            throws KalkanJarException, LibraryJarException {
         if ("fake".equals(ca)) {
 
+            CryptoBackend fakeBackend = new BcBackend();
+            fakeBackend.ensureRegistered();
+            ActiveBackend.use(fakeBackend);
             return new FakeProvider();
         }
         if (ca.equals("nca") || ca.equals("btsd") || ca.equals("ucgo") || ca.equals("auto")) {
@@ -87,9 +93,22 @@ public final class Runner {
                 throw new OperationalException(Messages.get(MsgKey.RUNNER_KALKAN_C_UNAVAILABLE));
             }
 
-            KalkanJar.resolveAndVerify();
-            return new KalkanProvider(trace);
+            CryptoBackend backend = selectRealBackend(engine);
+            backend.ensureRegistered();
+            ActiveBackend.use(backend);
+            return new JceVerificationProvider(trace);
         }
         throw new OperationalException(Messages.get(MsgKey.RUNNER_UNKNOWN_CA_PROVIDER, ca));
+    }
+
+    private static CryptoBackend selectRealBackend(String engine) {
+        if ("bc".equals(engine)) {
+            return new BcBackend();
+        }
+        if (engine == null) {
+            KalkanBackend kalkan = new KalkanBackend();
+            return kalkan.available() ? kalkan : new BcBackend();
+        }
+        return new KalkanBackend();
     }
 }

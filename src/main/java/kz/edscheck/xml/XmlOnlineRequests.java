@@ -1,7 +1,7 @@
 package kz.edscheck.xml;
 
-import static kz.edscheck.provider.kalkan.KalkanProvider.buildPath;
-import static kz.edscheck.provider.kalkan.KalkanProvider.resolveAnchor;
+import static kz.edscheck.provider.jce.JceVerificationProvider.buildPath;
+import static kz.edscheck.provider.jce.JceVerificationProvider.resolveAnchor;
 
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509CRL;
@@ -18,11 +18,12 @@ import kz.edscheck.domain.VerificationRequest;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.provider.OnlineRevocationRequest;
-import kz.edscheck.provider.kalkan.EmbeddedRevocation;
-import kz.edscheck.provider.kalkan.KalkanProvider.AnchorInfo;
+import kz.edscheck.provider.jce.EmbeddedRevocation;
+import kz.edscheck.provider.jce.JceVerificationProvider.AnchorInfo;
+import kz.edscheck.trust.ActiveBackend;
 import kz.edscheck.trust.ManifestTrust;
-import kz.gov.pki.kalkan.ocsp.BasicOCSPResp;
-import kz.gov.pki.kalkan.ocsp.OCSPResp;
+import org.bouncycastle.cert.ocsp.BasicOCSPResp;
+import org.bouncycastle.cert.ocsp.OCSPResp;
 
 public final class XmlOnlineRequests {
     private XmlOnlineRequests() {
@@ -61,7 +62,9 @@ public final class XmlOnlineRequests {
                 if (signerCert == null) {
                     continue;
                 }
-                List<X509Certificate> containerCerts = List.of(signerCert);
+                List<X509Certificate> containerCerts = ps.certificateValues().isEmpty()
+                    ? List.of(signerCert)
+                    : concatCert(signerCert, ps.certificateValues());
                 if (!resolveAnchor(signerCert, containerCerts, trust, ignoreTruststore).anchored()) {
                     continue;
                 }
@@ -106,15 +109,22 @@ public final class XmlOnlineRequests {
         }
     }
 
+    private static List<X509Certificate> concatCert(X509Certificate signerCert, List<X509Certificate> extra) {
+        List<X509Certificate> result = new ArrayList<>(extra.size() + 1);
+        result.add(signerCert);
+        result.addAll(extra);
+        return result;
+    }
+
     private static Instant peekGenTime(byte[] tstDer) {
         if (tstDer == null) {
             return Instant.now();
         }
         try {
-            kz.gov.pki.kalkan.asn1.ASN1InputStream ain = new kz.gov.pki.kalkan.asn1.ASN1InputStream(tstDer);
-            kz.gov.pki.kalkan.asn1.cms.ContentInfo ci =
-                kz.gov.pki.kalkan.asn1.cms.ContentInfo.getInstance(ain.readObject());
-            kz.gov.pki.kalkan.tsp.TimeStampToken tst = new kz.gov.pki.kalkan.tsp.TimeStampToken(ci);
+            org.bouncycastle.asn1.ASN1InputStream ain = new org.bouncycastle.asn1.ASN1InputStream(tstDer);
+            org.bouncycastle.asn1.cms.ContentInfo ci =
+                org.bouncycastle.asn1.cms.ContentInfo.getInstance(ain.readObject());
+            org.bouncycastle.tsp.TimeStampToken tst = new org.bouncycastle.tsp.TimeStampToken(ci);
             var genTime = tst.getTimeStampInfo().getGenTime();
             return genTime == null ? Instant.now() : genTime.toInstant();
         } catch (Exception e) {
@@ -126,7 +136,7 @@ public final class XmlOnlineRequests {
             List<OnlineRevocationRequest> requests, X509Certificate target, List<byte[]> ocspBlobs,
             List<byte[]> crlBlobs, String crlPath, List<X509Certificate> containerCerts,
             List<X509Certificate> trust, String label, int signerIndex, Stage stage) {
-        X509Certificate issuerCert = kz.edscheck.provider.kalkan.KalkanProvider.findBySubject(
+        X509Certificate issuerCert = kz.edscheck.provider.jce.JceVerificationProvider.findBySubject(
             target.getIssuerX500Principal(), trust, containerCerts);
         if (issuerCert != null) {
             for (byte[] der : ocspBlobs) {
@@ -141,7 +151,7 @@ public final class XmlOnlineRequests {
             }
         }
         try {
-            CertificateFactory cf = CertificateFactory.getInstance("X.509", "KALKAN");
+            CertificateFactory cf = ActiveBackend.x509CertificateFactory();
             for (byte[] der : crlBlobs) {
                 try {
                     X509CRL crl = (X509CRL) cf.generateCRL(new java.io.ByteArrayInputStream(der));
@@ -164,7 +174,7 @@ public final class XmlOnlineRequests {
     private static void addRequestForUncoveredTarget(
             List<OnlineRevocationRequest> requests, X509Certificate target, List<X509Certificate> containerCerts,
             List<X509Certificate> trust, String label, int signerIndex, Stage stage) {
-        X509Certificate issuer = kz.edscheck.provider.kalkan.KalkanProvider.findBySubject(
+        X509Certificate issuer = kz.edscheck.provider.jce.JceVerificationProvider.findBySubject(
             target.getIssuerX500Principal(), trust, containerCerts);
         if (issuer == null) {
             return;

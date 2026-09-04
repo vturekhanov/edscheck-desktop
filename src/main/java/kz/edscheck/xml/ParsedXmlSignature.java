@@ -25,5 +25,6 @@ record ParsedXmlSignature(
         String signatureTimestampCanonicalizationMethod,
         byte[] signatureTimestampToken,
         List<byte[]> ocspValues,
-        List<byte[]> crlValues) {
+        List<byte[]> crlValues,
+        List<X509Certificate> certificateValues) {
 }

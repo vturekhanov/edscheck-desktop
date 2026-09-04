@@ -6,9 +6,13 @@ import javax.security.auth.x500.X500Principal;
 
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.ASN1Sequence;
-import kz.gov.pki.kalkan.asn1.x509.X509Name;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.ASN1String;
+import org.bouncycastle.asn1.x500.AttributeTypeAndValue;
+import org.bouncycastle.asn1.x500.RDN;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x500.style.BCStyle;
 
 public final class Authorities {
     private static final Map<String, String> DISPLAY = Map.of(
@@ -19,29 +23,39 @@ public final class Authorities {
     private Authorities() {
     }
 
-    private static String attr(X500Principal name, kz.gov.pki.kalkan.asn1.DERObjectIdentifier oid) {
+    private static String attr(X500Principal name, ASN1ObjectIdentifier oid) {
         try {
-            ASN1Sequence seq = (ASN1Sequence)
-                new ASN1InputStream(name.getEncoded()).readObject();
-            X509Name x509Name = X509Name.getInstance(seq);
-            @SuppressWarnings("unchecked")
-            var values = x509Name.getValues(oid);
-            return values.isEmpty() ? "" : String.valueOf(values.get(0));
+            X500Name x500Name = X500Name.getInstance(name.getEncoded());
+            for (RDN rdn : x500Name.getRDNs(oid)) {
+                for (AttributeTypeAndValue atv : rdn.getTypesAndValues()) {
+                    if (atv.getType().equals(oid)) {
+                        return rawValue(atv.getValue());
+                    }
+                }
+            }
+            return "";
         } catch (Exception e) { 
             return "";
         }
     }
 
+    private static String rawValue(ASN1Encodable value) {
+        if (value instanceof ASN1String) {
+            return ((ASN1String) value).getString();
+        }
+        return value.toString();
+    }
+
     private static boolean isNca(X500Principal name) {
-        return attr(name, X509Name.CN).contains("ҰЛТТЫҚ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ");
+        return attr(name, BCStyle.CN).contains("ҰЛТТЫҚ КУӘЛАНДЫРУШЫ ОРТАЛЫҚ");
     }
 
     private static boolean isBtsd(X500Principal name) {
-        return "BTS Digital".equals(attr(name, X509Name.O)) || attr(name, X509Name.CN).contains("BTSD");
+        return "BTS Digital".equals(attr(name, BCStyle.O)) || attr(name, BCStyle.CN).contains("BTSD");
     }
 
     private static boolean isUcgo(X500Principal name) {
-        return attr(name, X509Name.CN).contains("Удостоверяющий центр Государственных органов");
+        return attr(name, BCStyle.CN).contains("Удостоверяющий центр Государственных органов");
     }
 
     public static String detectPrincipal(X500Principal name) {

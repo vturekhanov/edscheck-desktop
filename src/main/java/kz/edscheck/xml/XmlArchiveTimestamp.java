@@ -2,7 +2,6 @@ package kz.edscheck.xml;
 
 import java.io.ByteArrayOutputStream;
 import java.security.MessageDigest;
-import java.security.cert.CertStore;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
@@ -28,15 +27,19 @@ import kz.edscheck.provider.ArchiveMarkOutcome;
 import kz.edscheck.provider.ArchiveTimestampInfo;
 import kz.edscheck.provider.CaRevocationFact;
 import kz.edscheck.provider.StageOutcome;
-import kz.edscheck.provider.kalkan.KalkanProvider;
+import kz.edscheck.provider.jce.JceVerificationProvider;
 import kz.edscheck.trace.Trace;
+import kz.edscheck.trust.ActiveBackend;
 import kz.edscheck.trust.DigestAlgorithms;
 
-import kz.gov.pki.kalkan.asn1.ASN1InputStream;
-import kz.gov.pki.kalkan.asn1.cms.ContentInfo;
-import kz.gov.pki.kalkan.jce.provider.cms.CMSSignedData;
-import kz.gov.pki.kalkan.jce.provider.cms.SignerInformation;
-import kz.gov.pki.kalkan.tsp.TimeStampToken;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.cms.ContentInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.cms.SignerInformation;
+import org.bouncycastle.tsp.TimeStampToken;
+import org.bouncycastle.util.Store;
 
 final class XmlArchiveTimestamp {
     private static final Base64.Decoder BASE64 = Base64.getMimeDecoder();
@@ -133,7 +136,8 @@ final class XmlArchiveTimestamp {
 
         Boolean sigOk;
         try {
-            sigOk = tsaCert != null && tstSi.verify(tsaCert.getPublicKey(), "KALKAN");
+            sigOk = tsaCert != null
+                && JceVerificationProvider.verifySignerInfo(tstSi, tsaCert, ActiveBackend.current().jceProviderName());
         } catch (Exception e) {
             sigOk = false;
         }
@@ -143,7 +147,7 @@ final class XmlArchiveTimestamp {
         List<X509Certificate> pool = new ArrayList<>(containerCerts);
         pool.addAll(tsaCerts);
         try {
-            markPath = KalkanProvider.buildPath(tsaCert, pool, trust, genTime, ignoreTruststore);
+            markPath = JceVerificationProvider.buildPath(tsaCert, pool, trust, genTime, ignoreTruststore);
             chainOk = true;
         } catch (Exception e) {
             chainOk = false;
@@ -161,7 +165,7 @@ final class XmlArchiveTimestamp {
             List<byte[]> ocspBag = combined(validationData, baseOcspValues, "OCSPValues", "EncapsulatedOCSPValue");
             List<byte[]> crlBag = combined(validationData, baseCrlValues, "CRLValues", "EncapsulatedCRLValue");
             String markLabel = label + Messages.get(MsgKey.PROVIDER_LABEL_ARCHIVE_MARK_SUFFIX, position + 1);
-            KalkanProvider kp = new KalkanProvider(trace);
+            JceVerificationProvider kp = new JceVerificationProvider(trace);
             ownRevocation = kp.revocationCascadeForBag(tsaCert, ocspBag, crlBag, pool, trust, genTime, crlPath,
                 ignoreTruststore, externalOcsp, markLabel + Messages.get(MsgKey.PROVIDER_LABEL_TSA_CERT_SUFFIX));
             caFacts = kp.intermediateCaRevocationsForBag(markPath, ocspBag, crlBag, pool, trust, genTime, crlPath,
@@ -199,21 +203,22 @@ final class XmlArchiveTimestamp {
         ASN1InputStream ain = new ASN1InputStream(tokenDer);
         ContentInfo ci = ContentInfo.getInstance(ain.readObject());
         CMSSignedData tstCms = new CMSSignedData(ci);
-        SignerInformation tstSi = (SignerInformation) tstCms.getSignerInfos().getSigners().iterator().next();
+        SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
         TimeStampToken tst = new TimeStampToken(ci);
         Instant genTime = tst.getTimeStampInfo().getGenTime() == null ? null
             : tst.getTimeStampInfo().getGenTime().toInstant();
-        String imprintAlgOid = tst.getTimeStampInfo().getMessageImprintAlgOID();
+        String imprintAlgOid = tst.getTimeStampInfo().getMessageImprintAlgOID().getId();
         byte[] recordedImprint = tst.getTimeStampInfo().getMessageImprintDigest();
 
-        CertStore certStore = tstCms.getCertificatesAndCRLs("Collection", "KALKAN");
+        Store<X509CertificateHolder> certStore = tstCms.getCertificates();
+        JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
+
         @SuppressWarnings("unchecked")
-        Collection<? extends java.security.cert.Certificate> tsaCertColl =
-            (Collection<? extends java.security.cert.Certificate>) certStore.getCertificates(tstSi.getSID());
-        X509Certificate tsaCert = tsaCertColl.isEmpty() ? null : (X509Certificate) tsaCertColl.iterator().next();
+        Collection<X509CertificateHolder> tsaCertColl = certStore.getMatches(tstSi.getSID());
+        X509Certificate tsaCert = tsaCertColl.isEmpty() ? null : converter.getCertificate(tsaCertColl.iterator().next());
         List<X509Certificate> tsaCerts = new ArrayList<>();
-        for (java.security.cert.Certificate c : certStore.getCertificates(null)) {
-            tsaCerts.add((X509Certificate) c);
+        for (X509CertificateHolder h : certStore.getMatches(null)) {
+            tsaCerts.add(converter.getCertificate(h));
         }
         return new TokenParse(tstSi, tsaCert, tsaCerts, genTime, imprintAlgOid, recordedImprint);
     }
@@ -273,7 +278,7 @@ final class XmlArchiveTimestamp {
         String jceName = imprintAlgOid == null ? null : DigestAlgorithms.jceName(imprintAlgOid);
         if (jceName != null) {
             try {
-                computed = MessageDigest.getInstance(jceName, "KALKAN").digest(imprintBlob);
+                computed = MessageDigest.getInstance(jceName, ActiveBackend.current().jceProviderName()).digest(imprintBlob);
             } catch (Exception e) {
                 computed = null;
             }

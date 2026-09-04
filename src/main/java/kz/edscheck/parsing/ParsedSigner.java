@@ -6,7 +6,7 @@ import java.util.List;
 import kz.edscheck.domain.Certificate;
 import kz.edscheck.provider.ArchiveTimestampInfo;
 import kz.edscheck.provider.KeyUsageInfo;
-import kz.gov.pki.kalkan.jce.provider.cms.SignerInformation;
+import org.bouncycastle.cms.SignerInformation;
 
 public record ParsedSigner(
         int index,

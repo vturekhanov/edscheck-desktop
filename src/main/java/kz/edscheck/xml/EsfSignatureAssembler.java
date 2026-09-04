@@ -70,7 +70,7 @@ final class EsfSignatureAssembler {
 
         outcomes.put(Stage.REVOCATION, signerCert == null
             ? new StageOutcome(CheckStatus.NOT_VERIFIED, Messages.get(MsgKey.XML_NO_CERTIFICATE))
-            : new kz.edscheck.provider.kalkan.KalkanProvider(trace).revocationCascadeForBag(
+            : new kz.edscheck.provider.jce.JceVerificationProvider(trace).revocationCascadeForBag(
                 signerCert, List.of(), List.of(), List.of(signerCert), trust, refTime, crlPath,
                 ignoreTruststore, externalOcsp, label));
 

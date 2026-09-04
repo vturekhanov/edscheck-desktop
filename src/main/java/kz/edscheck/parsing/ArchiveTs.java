@@ -8,21 +8,25 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-import kz.gov.pki.kalkan.asn1.ASN1Encodable;
-import kz.gov.pki.kalkan.asn1.ASN1EncodableVector;
-import kz.gov.pki.kalkan.asn1.ASN1OctetString;
-import kz.gov.pki.kalkan.asn1.ASN1Sequence;
-import kz.gov.pki.kalkan.asn1.ASN1Set;
-import kz.gov.pki.kalkan.asn1.DERObjectIdentifier;
-import kz.gov.pki.kalkan.asn1.DERSet;
-import kz.gov.pki.kalkan.asn1.cms.Attribute;
-import kz.gov.pki.kalkan.asn1.cms.AttributeTable;
-import kz.gov.pki.kalkan.asn1.cms.CMSAttributes;
-import kz.gov.pki.kalkan.asn1.cms.ContentInfo;
-import kz.gov.pki.kalkan.asn1.x509.AlgorithmIdentifier;
-import kz.gov.pki.kalkan.jce.provider.cms.CMSSignedData;
-import kz.gov.pki.kalkan.jce.provider.cms.SignerInformation;
-import kz.gov.pki.kalkan.tsp.TimeStampToken;
+import org.bouncycastle.asn1.ASN1Encodable;
+import org.bouncycastle.asn1.ASN1EncodableVector;
+import org.bouncycastle.asn1.ASN1Encoding;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.ASN1Set;
+import org.bouncycastle.asn1.DERSet;
+import org.bouncycastle.asn1.cms.Attribute;
+import org.bouncycastle.asn1.cms.AttributeTable;
+import org.bouncycastle.asn1.cms.CMSAttributes;
+import org.bouncycastle.asn1.cms.ContentInfo;
+import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.cms.SignerInformation;
+import org.bouncycastle.tsp.TimeStampToken;
+import org.bouncycastle.util.Store;
 
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
@@ -32,12 +36,10 @@ public final class ArchiveTs {
     public static final String OID_ATS_HASH_INDEX_V3 = "0.4.0.19122.1.5";   
     private static final String OID_MESSAGE_DIGEST = "1.2.840.113549.1.9.4";
 
-    private static final DERObjectIdentifier OID_ARCHIVE_TS_V3_DER =
-        new DERObjectIdentifier(OID_ARCHIVE_TIMESTAMP_V3);
-    private static final DERObjectIdentifier OID_ATS_HASH_INDEX_V3_DER =
-        new DERObjectIdentifier(OID_ATS_HASH_INDEX_V3);
-
-    private static final String PROV = "KALKAN";
+    private static final ASN1ObjectIdentifier OID_ARCHIVE_TS_V3_DER =
+        new ASN1ObjectIdentifier(OID_ARCHIVE_TIMESTAMP_V3);
+    private static final ASN1ObjectIdentifier OID_ATS_HASH_INDEX_V3_DER =
+        new ASN1ObjectIdentifier(OID_ATS_HASH_INDEX_V3);
 
     private ArchiveTs() {
     }
@@ -103,7 +105,7 @@ public final class ArchiveTs {
         mark.crlBlobs = crlBlobs;
 
         List<byte[]> attrBlobs = new ArrayList<>(nonV3Blobs);
-        byte[] v3TypeDer = OID_ARCHIVE_TS_V3_DER.getDEREncoded();
+        byte[] v3TypeDer = derEncoded(OID_ARCHIVE_TS_V3_DER);
         for (int j = 0; j < position; j++) {
             attrBlobs.add(concat(v3TypeDer, earlierMarks.get(j).tstDer));
         }
@@ -114,12 +116,10 @@ public final class ArchiveTs {
         SignerInformation tstSi;
         TimeStampToken tst;
         try {
-            mark.tstDer = ((ASN1Encodable) value).getDEREncoded();
+            mark.tstDer = ((ASN1Encodable) value).toASN1Primitive().getEncoded(ASN1Encoding.DER);
             ci = ContentInfo.getInstance(value);
             tstCms = new CMSSignedData(ci);
-            @SuppressWarnings("unchecked")
-            Collection<SignerInformation> tstSigners =
-                (Collection<SignerInformation>) tstCms.getSignerInfos().getSigners();
+            Collection<SignerInformation> tstSigners = tstCms.getSignerInfos().getSigners();
             tstSi = tstSigners.iterator().next();
             tst = new TimeStampToken(ci);
         } catch (Exception e) {
@@ -130,20 +130,21 @@ public final class ArchiveTs {
         try {
             var genTimeDate = tst.getTimeStampInfo().getGenTime();
             mark.genTime = genTimeDate != null ? genTimeDate.toInstant() : null;
-            mark.imprintAlgOid = tst.getTimeStampInfo().getMessageImprintAlgOID();
+            mark.imprintAlgOid = tst.getTimeStampInfo().getMessageImprintAlgOID().getId();
             mark.recordedImprint = tst.getTimeStampInfo().getMessageImprintDigest();
 
-            var tcs = tstCms.getCertificatesAndCRLs("Collection", PROV);
+            Store<X509CertificateHolder> tcs = tstCms.getCertificates();
+            JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
+
             @SuppressWarnings("unchecked")
-            Collection<? extends java.security.cert.Certificate> tsaCertColl =
-                (Collection<? extends java.security.cert.Certificate>) tcs.getCertificates(tstSi.getSID());
+            Collection<X509CertificateHolder> tsaCertColl = tcs.getMatches(tstSi.getSID());
             List<X509Certificate> tsaCerts = new ArrayList<>();
-            for (java.security.cert.Certificate c : tcs.getCertificates(null)) {
-                tsaCerts.add((X509Certificate) c);
+            for (X509CertificateHolder h : tcs.getMatches(null)) {
+                tsaCerts.add(converter.getCertificate(h));
             }
             mark.tsaCerts = tsaCerts;
             if (!tsaCertColl.isEmpty()) {
-                mark.tsaCert = (X509Certificate) tsaCertColl.iterator().next();
+                mark.tsaCert = converter.getCertificate(tsaCertColl.iterator().next());
                 try {
                     List<String> eku = mark.tsaCert.getExtendedKeyUsage();
                     mark.tsaEkuOk = eku != null && eku.contains("1.3.6.1.5.5.7.3.8");
@@ -165,10 +166,10 @@ public final class ArchiveTs {
                 return mark;
             }
             Object atsValue = atsAttr.getAttrValues().getObjectAt(0);
-            atsIndexDer = ((ASN1Encodable) atsValue).getDEREncoded();
+            atsIndexDer = ((ASN1Encodable) atsValue).toASN1Primitive().getEncoded(ASN1Encoding.DER);
             ASN1Sequence ats = ASN1Sequence.getInstance(atsValue);
             AlgorithmIdentifier hashIndAlg = AlgorithmIdentifier.getInstance(ats.getObjectAt(0));
-            mark.hashIndAlgOid = hashIndAlg.getObjectId().getId();
+            mark.hashIndAlgOid = hashIndAlg.getAlgorithm().getId();
             mark.recordedCertHashes = octetStrings(ats.getObjectAt(1));
             mark.recordedCrlHashes = octetStrings(ats.getObjectAt(2));
             mark.recordedAttrHashes = octetStrings(ats.getObjectAt(3));
@@ -319,10 +320,10 @@ public final class ArchiveTs {
             if (a.getAttrType().equals(OID_ARCHIVE_TS_V3_DER)) {
                 continue;
             }
-            byte[] typeDer = a.getAttrType().getDEREncoded();
+            byte[] typeDer = derEncoded(a.getAttrType());
             ASN1Set values = a.getAttrValues();
             for (int j = 0; j < values.size(); j++) {
-                out.add(concat(typeDer, ((ASN1Encodable) values.getObjectAt(j)).getDEREncoded()));
+                out.add(concat(typeDer, derEncoded(values.getObjectAt(j).toASN1Primitive())));
             }
         }
         return out;
@@ -340,13 +341,13 @@ public final class ArchiveTs {
         byte[] messageDigest;
         try {
             messageDigest = ASN1OctetString.getInstance(mdAttr.getAttrValues().getObjectAt(0)).getOctets();
-            var asnSi = si.toSignerInfo();
-            byte[] versionDer = asnSi.getVersion().getDEREncoded();
-            byte[] sidDer = asnSi.getSID().getDEREncoded();
-            byte[] digestAlgDer = asnSi.getDigestAlgorithm().getDEREncoded();
+            var asnSi = si.toASN1Structure();
+            byte[] versionDer = derEncoded(asnSi.getVersion());
+            byte[] sidDer = derEncoded(asnSi.getSID());
+            byte[] digestAlgDer = derEncoded(asnSi.getDigestAlgorithm());
             byte[] signedAttrsDer = signedAttrsRawBytes(at);
-            byte[] sigAlgDer = asnSi.getDigestEncryptionAlgorithm().getDEREncoded();
-            byte[] signatureDer = asnSi.getEncryptedDigest().getDEREncoded();
+            byte[] sigAlgDer = derEncoded(asnSi.getDigestEncryptionAlgorithm());
+            byte[] signatureDer = derEncoded(asnSi.getEncryptedDigest());
             return concat(eContentTypeDer, messageDigest, versionDer, sidDer, digestAlgDer,
                 signedAttrsDer, sigAlgDer, signatureDer);
         } catch (Exception e) {
@@ -354,11 +355,19 @@ public final class ArchiveTs {
         }
     }
 
-    private static byte[] signedAttrsRawBytes(AttributeTable signedAttrs) {
-        byte[] setEncoded = new DERSet(signedAttrs.toASN1EncodableVector()).getDEREncoded();
+    private static byte[] signedAttrsRawBytes(AttributeTable signedAttrs) throws java.io.IOException {
+        byte[] setEncoded = new DERSet(signedAttrs.toASN1EncodableVector()).getEncoded(ASN1Encoding.DER);
         byte[] out = setEncoded.clone();
         out[0] = (byte) 0xA0;
         return out;
+    }
+
+    private static byte[] derEncoded(org.bouncycastle.asn1.ASN1Object obj) {
+        try {
+            return obj.getEncoded(ASN1Encoding.DER);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static List<byte[]> octetStrings(Object seqElement) {

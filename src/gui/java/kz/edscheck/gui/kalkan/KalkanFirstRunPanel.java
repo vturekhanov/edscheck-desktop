@@ -39,12 +39,16 @@ public final class KalkanFirstRunPanel extends JPanel {
 
     private final Path destination;
     private final Consumer<Path> onResolved;
+    private final Runnable onContinueInformational;
 
     final JLabel errorLabel;
 
-    public KalkanFirstRunPanel(Path destination, Consumer<Path> onResolved) {
+    final JButton continueButton;
+
+    public KalkanFirstRunPanel(Path destination, Consumer<Path> onResolved, Runnable onContinueInformational) {
         this.destination = destination;
         this.onResolved = onResolved;
+        this.onContinueInformational = onContinueInformational;
 
         String link = "<a href=\"" + KALKAN_SDK_URL + "\">" + KALKAN_SDK_URL + "</a>";
         JLabel explanation = new JLabel(htmlWrap(GuiMessages.get(GuiMsgKey.KALKAN_FIRST_RUN_EXPLANATION, link)));
@@ -71,6 +75,9 @@ public final class KalkanFirstRunPanel extends JPanel {
         JButton chooseButton = new JButton(GuiMessages.get(GuiMsgKey.BUTTON_CHOOSE_FILE));
         chooseButton.addActionListener(e -> onChooseFile());
 
+        continueButton = new JButton(GuiMessages.get(GuiMsgKey.KALKAN_FIRST_RUN_CONTINUE_INFORMATIONAL));
+        continueButton.addActionListener(e -> onContinueInformational.run());
+
         JPanel dropZone = new JPanel();
         dropZone.setLayout(new BoxLayout(dropZone, BoxLayout.Y_AXIS));
         dropZone.setBorder(BorderFactory.createCompoundBorder(
@@ -78,9 +85,12 @@ public final class KalkanFirstRunPanel extends JPanel {
             BorderFactory.createEmptyBorder(24, 16, 24, 16)));
         dropHint.setAlignmentX(CENTER_ALIGNMENT);
         chooseButton.setAlignmentX(CENTER_ALIGNMENT);
+        continueButton.setAlignmentX(CENTER_ALIGNMENT);
         dropZone.add(dropHint);
         dropZone.add(javax.swing.Box.createVerticalStrut(12));
         dropZone.add(chooseButton);
+        dropZone.add(javax.swing.Box.createVerticalStrut(12));
+        dropZone.add(continueButton);
 
         errorLabel = new JLabel(" ");
         errorLabel.setForeground(COLOR_ERROR);
