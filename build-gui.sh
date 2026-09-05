@@ -41,6 +41,10 @@ BUILD_DIR="$DIR/build/gui/classes"
 DIST_DIR="$DIR/dist"
 LIB_DIR="$DIR/lib"
 
+if [ "$(uname -s)" = "Darwin" ] && command -v xattr >/dev/null 2>&1; then
+    xattr -cr "$LIB_DIR" 2>/dev/null || true
+fi
+
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR" "$DIST_DIR"
 
