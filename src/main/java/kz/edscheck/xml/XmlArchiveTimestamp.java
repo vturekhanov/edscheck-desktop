@@ -284,10 +284,10 @@ final class XmlArchiveTimestamp {
             }
         }
         if (computed == null || recordedImprint == null) {
-            return Messages.get(MsgKey.ARCHIVE_TS_XML_IMPRINT_NOT_RECOMPUTED);
+            return Messages.get(MsgKey.ARCHIVE_TS_IMPRINT_NOT_RECOMPUTED);
         }
         if (!Arrays.equals(computed, recordedImprint)) {
-            return Messages.get(MsgKey.ARCHIVE_TS_XML_IMPRINT_MISMATCH);
+            return Messages.get(MsgKey.ARCHIVE_TS_IMPRINT_MISMATCH);
         }
         return null;
     }

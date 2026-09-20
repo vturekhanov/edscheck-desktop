@@ -18,6 +18,8 @@ public final class SignerVerification {
 
     private final List<String> missingBbAttrs;
 
+    private final boolean signedAttrsDerOrdered;
+
     private final String authority;
 
     private final List<CaRevocationFact> intermediateCaRevocations;
@@ -30,34 +32,44 @@ public final class SignerVerification {
             Map<Stage, StageOutcome> outcomes, List<Certificate> chain,
             List<String> warnings, List<String> missingBbAttrs) {
         this(index, certificate, keyUsage, timestamp, archive, outcomes, chain, warnings,
-            missingBbAttrs, null);
+            missingBbAttrs, true);
     }
 
     public SignerVerification(
             int index, Certificate certificate, KeyUsageInfo keyUsage,
             TimestampInfo timestamp, ArchiveTimestampInfo archive,
             Map<Stage, StageOutcome> outcomes, List<Certificate> chain,
-            List<String> warnings, List<String> missingBbAttrs, String authority) {
+            List<String> warnings, List<String> missingBbAttrs, boolean signedAttrsDerOrdered) {
         this(index, certificate, keyUsage, timestamp, archive, outcomes, chain, warnings,
-            missingBbAttrs, authority, null);
+            missingBbAttrs, signedAttrsDerOrdered, null);
     }
 
     public SignerVerification(
             int index, Certificate certificate, KeyUsageInfo keyUsage,
             TimestampInfo timestamp, ArchiveTimestampInfo archive,
             Map<Stage, StageOutcome> outcomes, List<Certificate> chain,
-            List<String> warnings, List<String> missingBbAttrs, String authority,
-            List<CaRevocationFact> intermediateCaRevocations) {
+            List<String> warnings, List<String> missingBbAttrs, boolean signedAttrsDerOrdered,
+            String authority) {
         this(index, certificate, keyUsage, timestamp, archive, outcomes, chain, warnings,
-            missingBbAttrs, authority, intermediateCaRevocations, null);
+            missingBbAttrs, signedAttrsDerOrdered, authority, null);
     }
 
     public SignerVerification(
             int index, Certificate certificate, KeyUsageInfo keyUsage,
             TimestampInfo timestamp, ArchiveTimestampInfo archive,
             Map<Stage, StageOutcome> outcomes, List<Certificate> chain,
-            List<String> warnings, List<String> missingBbAttrs, String authority,
-            List<CaRevocationFact> intermediateCaRevocations,
+            List<String> warnings, List<String> missingBbAttrs, boolean signedAttrsDerOrdered,
+            String authority, List<CaRevocationFact> intermediateCaRevocations) {
+        this(index, certificate, keyUsage, timestamp, archive, outcomes, chain, warnings,
+            missingBbAttrs, signedAttrsDerOrdered, authority, intermediateCaRevocations, null);
+    }
+
+    public SignerVerification(
+            int index, Certificate certificate, KeyUsageInfo keyUsage,
+            TimestampInfo timestamp, ArchiveTimestampInfo archive,
+            Map<Stage, StageOutcome> outcomes, List<Certificate> chain,
+            List<String> warnings, List<String> missingBbAttrs, boolean signedAttrsDerOrdered,
+            String authority, List<CaRevocationFact> intermediateCaRevocations,
             List<ArchiveMarkOutcome> archiveMarkOutcomes) {
         this.index = index;
         this.certificate = certificate;
@@ -68,6 +80,7 @@ public final class SignerVerification {
         this.chain = chain == null ? List.of() : List.copyOf(chain);
         this.warnings = warnings == null ? List.of() : List.copyOf(warnings);
         this.missingBbAttrs = missingBbAttrs == null ? List.of() : List.copyOf(missingBbAttrs);
+        this.signedAttrsDerOrdered = signedAttrsDerOrdered;
         this.authority = authority;
         this.intermediateCaRevocations =
             intermediateCaRevocations == null ? List.of() : List.copyOf(intermediateCaRevocations);
@@ -113,6 +126,10 @@ public final class SignerVerification {
 
     public List<String> missingBbAttrs() {
         return missingBbAttrs;
+    }
+
+    public boolean signedAttrsDerOrdered() {
+        return signedAttrsDerOrdered;
     }
 
     public String authority() {

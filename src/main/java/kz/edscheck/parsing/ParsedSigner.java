@@ -31,5 +31,6 @@ public record ParsedSigner(
         List<ArchiveTs.ParsedArchiveTimestamp> archiveMarks,
         SignerInformation signerInfo,
         List<String> missingBbAttrs,
-        List<byte[]> tstCrlBlobs) {
+        List<byte[]> tstCrlBlobs,
+        boolean signedAttrsDerOrdered) {
 }

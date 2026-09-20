@@ -48,7 +48,7 @@ public final class Runner {
             Map.of(), params.externalOcsp(), params.ignoreTruststore());
 
         VerificationProvider provider = buildProvider(params.ca(), params.engine(), params.trace());
-        PolicyProfile policy = ddcard ? PolicyProfile.ddcardPolicy() : PolicyProfile.ncaPolicy();
+        PolicyProfile policy = PolicyProfile.ncaPolicy();
         VerificationEngine engine = new VerificationEngine(provider, policy, params.trace());
 
         SignedContainer result;

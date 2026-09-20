@@ -71,6 +71,10 @@ import kz.edscheck.msg.MsgKey;
 import kz.edscheck.parsing.ArchiveTs;
 import kz.edscheck.parsing.ParsedContainer;
 import kz.edscheck.parsing.ParsedSigner;
+import kz.edscheck.pades.PadesDssMaterial;
+import kz.edscheck.pades.PadesSignatureInput;
+import kz.edscheck.pades.PadesSignatureObject;
+import kz.edscheck.parsing.PadesParsing;
 import kz.edscheck.parsing.Parsing;
 import kz.edscheck.provider.ArchiveMarkOutcome;
 import kz.edscheck.provider.CaRevocationFact;
@@ -138,6 +142,13 @@ public final class JceVerificationProvider implements VerificationProvider {
             out.add(verifyOne(request, sig, document));
         }
         return out;
+    }
+
+    @Override
+    public ProviderResult verifyPades(VerificationRequest request, PadesSignatureInput input) {
+        List<X509Certificate> trust = ManifestTrust.loadCertificates(request.trust().roots());
+        ParsedContainer parsed = PadesParsing.toParsedContainer(input, trust);
+        return processParsed(request, trust, parsed);
     }
 
     @Override
@@ -263,10 +274,10 @@ public final class JceVerificationProvider implements VerificationProvider {
             new StageOutcome(CheckStatus.FAIL, Messages.get(MsgKey.PROVIDER_CHAIN_NOT_ANCHORED)));
         outcomes.put(Stage.REVOCATION, revocation);
 
-        traceMissingBbAttrs(ps);
+        traceSignedAttrsFacts(ps);
         return new SignerVerification(ps.index(), ps.certificate(), ps.keyUsage(), timestamp,
-            ps.archive(), outcomes, ps.chain(), List.of(), ps.missingBbAttrs(), authority,
-            List.of(), archiveMarkOutcomes);
+            ps.archive(), outcomes, ps.chain(), List.of(), ps.missingBbAttrs(),
+            ps.signedAttrsDerOrdered(), authority, List.of(), archiveMarkOutcomes);
     }
 
     private SignerVerification signerAnchored(
@@ -284,19 +295,23 @@ public final class JceVerificationProvider implements VerificationProvider {
 
         outcomes.put(Stage.REVOCATION, revocation);
 
-        traceMissingBbAttrs(ps);
+        traceSignedAttrsFacts(ps);
         return new SignerVerification(ps.index(), ps.certificate(), ps.keyUsage(), timestamp,
-            ps.archive(), outcomes, ps.chain(), List.of(), ps.missingBbAttrs(), authority,
-            chainResult.intermediateCaRevocations(), archiveMarkOutcomes);
+            ps.archive(), outcomes, ps.chain(), List.of(), ps.missingBbAttrs(),
+            ps.signedAttrsDerOrdered(), authority, chainResult.intermediateCaRevocations(),
+            archiveMarkOutcomes);
     }
 
-    private void traceMissingBbAttrs(ParsedSigner ps) {
+    private void traceSignedAttrsFacts(ParsedSigner ps) {
         if (ps.missingBbAttrs().isEmpty()) {
             trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_BB_ATTRS_OK));
-            return;
+        } else {
+            trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_BB_ATTRS_MISSING,
+                String.join(", ", ps.missingBbAttrs())));
         }
-        trace.v(label(ps) + ": " + Messages.get(MsgKey.PROVIDER_TRACE_BB_ATTRS_MISSING,
-            String.join(", ", ps.missingBbAttrs())));
+        trace.v(label(ps) + ": " + (ps.signedAttrsDerOrdered()
+            ? Messages.get(MsgKey.PROVIDER_TRACE_SIGNED_ATTRS_DER_ORDER_OK)
+            : Messages.get(MsgKey.PROVIDER_TRACE_SIGNED_ATTRS_DER_ORDER_VIOLATED)));
     }
 
     private StageOutcome integrityOutcome(ParsedSigner ps, X509Certificate signerCert) {
@@ -713,7 +728,11 @@ public final class JceVerificationProvider implements VerificationProvider {
     public List<OnlineRevocationRequest> onlineRevocationRequests(
             VerificationRequest request, byte[] container) {
         List<X509Certificate> trust = ManifestTrust.loadCertificates(request.trust().roots());
-        ParsedContainer parsed = Parsing.parseContainer(container, trust);
+        return onlineRevocationRequests(request, Parsing.parseContainer(container, trust), trust);
+    }
+
+    public List<OnlineRevocationRequest> onlineRevocationRequests(
+            VerificationRequest request, ParsedContainer parsed, List<X509Certificate> trust) {
         boolean ignoreTruststore = request.ignoreTruststore();
         List<X509Certificate> containerCerts = parsed.containerCerts();
         String crlPath = request.trust().crls().isEmpty() ? null : request.trust().crls().get(0);
@@ -772,6 +791,28 @@ public final class JceVerificationProvider implements VerificationProvider {
                     parsed.crlBlobs(), crlPath, markFacts.digestOid(), markLabel, ps.index(),
                     Stage.ARCHIVE_TIMESTAMP);
             }
+        }
+        return requests;
+    }
+
+    public List<OnlineRevocationRequest> onlineRevocationRequestsPades(
+            VerificationRequest request, List<PadesSignatureObject> objects, byte[] fileBytes,
+            PadesDssMaterial dss) {
+        List<X509Certificate> trust = ManifestTrust.loadCertificates(request.trust().roots());
+        List<OnlineRevocationRequest> requests = new ArrayList<>();
+        int index = 0;
+        for (PadesSignatureObject object : objects) {
+            if (!object.isSignature()) {
+                continue;
+            }
+            try {
+                ParsedContainer parsed = PadesParsing.toParsedContainer(
+                    new PadesSignatureInput(index, object, objects, fileBytes, dss), trust);
+                requests.addAll(onlineRevocationRequests(request, parsed, trust));
+            } catch (RuntimeException e) {
+                trace.v(Messages.get(MsgKey.PROVIDER_TRACE_PADES_ONLINE_SKIPPED, index + 1, rootMessage(e)));
+            }
+            index++;
         }
         return requests;
     }
@@ -1222,7 +1263,9 @@ public final class JceVerificationProvider implements VerificationProvider {
                 List<byte[]> certHashes = digestGroup(mark.certBlobs, mark.hashIndAlgOid);
                 List<byte[]> crlHashes = digestGroup(mark.crlBlobs, mark.hashIndAlgOid);
                 List<byte[]> attrHashes = digestGroup(mark.attrBlobs, mark.hashIndAlgOid);
-                byte[] imprint = digestOne(mark.imprintBlob, mark.imprintAlgOid);
+
+                byte[] imprint = mark.precomputedImprint != null
+                    ? mark.precomputedImprint : digestOne(mark.imprintBlob, mark.imprintAlgOid);
                 hashFailure = ArchiveTs.evaluateHashes(mark, certHashes, crlHashes, attrHashes, imprint);
             }
 
@@ -1405,6 +1448,14 @@ public final class JceVerificationProvider implements VerificationProvider {
             }
             if (!pinned) {
                 throw new Exception(Messages.get(MsgKey.PROVIDER_ANCHOR_SELF_SIGNED_MISMATCH));
+            }
+        }
+
+        if (refTime != null) {
+            X509Certificate anchorCert = pkixResult.getTrustAnchor().getTrustedCert();
+            if (refTime.before(anchorCert.getNotBefore()) || refTime.after(anchorCert.getNotAfter())) {
+                throw new Exception(Messages.get(MsgKey.PROVIDER_ANCHOR_EXPIRED,
+                    anchorCert.getSubjectX500Principal().getName()));
             }
         }
 

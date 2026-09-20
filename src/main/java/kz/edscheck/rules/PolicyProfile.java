@@ -13,43 +13,26 @@ public final class PolicyProfile {
 
     private final boolean requireBbAttrs;
 
-    private final boolean ddcard;
+    private final Duration ocspSigningLowerBound;
 
-    public PolicyProfile() {
-        this(false, Set.of(), false, true, Duration.ofMinutes(5), false, false);
-    }
+    private static final PolicyProfile DEFAULT = new PolicyProfile(
+        false, Set.of(), false, true, Duration.ofMinutes(5), false, Duration.ofSeconds(300));
 
     public PolicyProfile(
             boolean requireTimestamp, Set<String> allowedKeyAlgorithms,
             boolean enforcePolicyOids, boolean requireNonRepudiation, Duration ocspMaxAge,
-            boolean requireBbAttrs, boolean ddcard) {
+            boolean requireBbAttrs, Duration ocspSigningLowerBound) {
         this.requireTimestamp = requireTimestamp;
         this.allowedKeyAlgorithms = allowedKeyAlgorithms == null ? Set.of() : Set.copyOf(allowedKeyAlgorithms);
         this.enforcePolicyOids = enforcePolicyOids;
         this.requireNonRepudiation = requireNonRepudiation;
         this.ocspMaxAge = ocspMaxAge;
         this.requireBbAttrs = requireBbAttrs;
-        this.ddcard = ddcard;
-    }
-
-    public static PolicyProfile withOcspMaxAge(Duration ocspMaxAge) {
-        return new PolicyProfile(false, Set.of(), false, true, ocspMaxAge, false, false);
-    }
-
-    public static PolicyProfile withRequireTimestamp(boolean requireTimestamp) {
-        return new PolicyProfile(requireTimestamp, Set.of(), false, true, Duration.ofMinutes(5), false, false);
-    }
-
-    public static PolicyProfile withRequireBbAttrs(boolean requireBbAttrs) {
-        return new PolicyProfile(false, Set.of(), false, true, Duration.ofMinutes(5), requireBbAttrs, false);
+        this.ocspSigningLowerBound = ocspSigningLowerBound;
     }
 
     public static PolicyProfile ncaPolicy() {
-        return new PolicyProfile();
-    }
-
-    public static PolicyProfile ddcardPolicy() {
-        return new PolicyProfile(false, Set.of(), false, true, Duration.ofMinutes(5), false, true);
+        return DEFAULT;
     }
 
     public boolean requireTimestamp() {
@@ -76,7 +59,7 @@ public final class PolicyProfile {
         return ocspMaxAge;
     }
 
-    public boolean ddcard() {
-        return ddcard;
+    public Duration ocspSigningLowerBound() {
+        return ocspSigningLowerBound;
     }
 }

@@ -119,8 +119,8 @@ final class XmlSignatureAssembler {
 
         SignerVerification sv = new SignerVerification(
             ps.index(), ps.certificate(), keyUsage, timestamp, archiveResult.info(),
-            outcomes, chain, List.of(), List.of(), authority, chainResult.intermediateCaRevocations(),
-            archiveResult.markOutcomes());
+            outcomes, chain, List.of(), List.of(), true, authority,
+            chainResult.intermediateCaRevocations(), archiveResult.markOutcomes());
 
         return VerificationEngine.assembleSignature(sv, Set.of(), policy, signedAttrsResult);
     }

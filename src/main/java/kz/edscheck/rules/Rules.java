@@ -70,17 +70,8 @@ public final class Rules {
             return false;
         }
         Instant thisUpdate = outcome.validFrom();
-        return thisUpdate != null && thisUpdate.isBefore(referenceTime.minus(OCSP_SIGNING_LOWER_BOUND));
-    }
-
-    private static boolean ocspWindowViolated(
-            Instant thisUpdate, Instant validUntil, Instant referenceTime, Duration ocspMaxAge) {
-        if (thisUpdate == null || ocspMaxAge == null) {
-            return false;
-        }
-        Instant lower = thisUpdate.minus(ocspMaxAge);
-        Instant upper = validUntil != null ? validUntil : thisUpdate.plus(ocspMaxAge);
-        return referenceTime.isBefore(lower) || referenceTime.isAfter(upper);
+        Duration lowerBound = policy.ocspSigningLowerBound();
+        return thisUpdate != null && lowerBound != null && thisUpdate.isBefore(referenceTime.minus(lowerBound));
     }
 
     public static CheckAndWarnings timestampCheck(TimestampInfo timestamp, PolicyProfile policy) {
@@ -151,29 +142,41 @@ public final class Rules {
         "content-type", Warnings.CONTENT_TYPE_ABSENT,
         "message-digest", Warnings.MESSAGE_DIGEST_ABSENT,
         "signing-time", Warnings.SIGNING_TIME_ABSENT,
-        "signing-certificate-v2", Warnings.SIGNING_CERTIFICATE_V2_ABSENT);
+        "signing-certificate-v2", Warnings.SIGNING_CERTIFICATE_V2_ABSENT,
 
-    public static CheckAndWarnings signedAttrsCheck(List<String> missingBbAttrs, PolicyProfile policy) {
+        "signing-certificate(-v2)", Warnings.SIGNING_CERTIFICATE_V2_ABSENT,
+        "/M|signing-time", Warnings.SIGNING_TIME_ABSENT);
+
+    public static CheckAndWarnings signedAttrsCheck(
+            List<String> missingBbAttrs, boolean signedAttrsDerOrdered, PolicyProfile policy) {
         List<String> warnings = new ArrayList<>();
-        if (missingBbAttrs.isEmpty()) {
+        if (missingBbAttrs.isEmpty() && signedAttrsDerOrdered) {
             return new CheckAndWarnings(new Check(Stage.SIGNED_ATTRIBUTES, CheckStatus.PASS), warnings);
         }
-        String joined = String.join(", ", missingBbAttrs);
-        if (policy.requireBbAttrs()) {
+        if (!missingBbAttrs.isEmpty() && policy.requireBbAttrs()) {
+            String joined = String.join(", ", missingBbAttrs);
             return new CheckAndWarnings(
                 new Check(Stage.SIGNED_ATTRIBUTES, CheckStatus.FAIL,
                     Messages.get(MsgKey.RULES_SIGNED_ATTRS_REQUIRED_MISSING, joined)),
                 warnings);
         }
-        for (String name : missingBbAttrs) {
-            String code = BB_ATTR_WARNING.get(name);
-            if (code != null) {
-                warnings.add(code);
+        List<String> detailParts = new ArrayList<>();
+        if (!missingBbAttrs.isEmpty()) {
+            String joined = String.join(", ", missingBbAttrs);
+            detailParts.add(Messages.get(MsgKey.RULES_SIGNED_ATTRS_MISSING, joined));
+            for (String name : missingBbAttrs) {
+                String code = BB_ATTR_WARNING.get(name);
+                if (code != null) {
+                    warnings.add(code);
+                }
             }
         }
+        if (!signedAttrsDerOrdered) {
+            detailParts.add(Messages.get(MsgKey.RULES_SIGNED_ATTRS_NOT_DER_ORDERED));
+            warnings.add(Warnings.SIGNED_ATTRS_NOT_DER_ORDERED);
+        }
         return new CheckAndWarnings(
-            new Check(Stage.SIGNED_ATTRIBUTES, CheckStatus.WARN,
-                Messages.get(MsgKey.RULES_SIGNED_ATTRS_MISSING, joined)),
+            new Check(Stage.SIGNED_ATTRIBUTES, CheckStatus.WARN, String.join("; ", detailParts)),
             warnings);
     }
 
@@ -430,27 +433,17 @@ public final class Rules {
         return new CheckAndWarnings(check.withRevokedAt(revokedAt, outcome.revokedReason()), List.of());
     }
 
-    private static final Duration OCSP_SIGNING_LOWER_BOUND = Duration.ofSeconds(10);
-
     public static Check applyOcspSigningWindow(
             Check check, StageOutcome outcome, Instant referenceTime, PolicyProfile policy) {
         if (outcome == null || check.source() == null || !check.source().isOcsp()) {
             return check;
         }
         Instant thisUpdate = outcome.validFrom();
-        if (thisUpdate == null) {
+        Duration lowerBound = policy.ocspSigningLowerBound();
+        if (thisUpdate == null || lowerBound == null) {
             return check;
         }
-        if (policy.ddcard()) {
-            if (policy.ocspMaxAge() == null) {
-                return check;
-            }
-            if (!ocspWindowViolated(thisUpdate, outcome.validUntil(), referenceTime, policy.ocspMaxAge())) {
-                return check;
-            }
-            return ocspWindowFailCheck(check, thisUpdate);
-        }
-        if (thisUpdate.isBefore(referenceTime.minus(OCSP_SIGNING_LOWER_BOUND))) {
+        if (thisUpdate.isBefore(referenceTime.minus(lowerBound))) {
             return ocspWindowFailCheck(check, thisUpdate);
         }
         return check;

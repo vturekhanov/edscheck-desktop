@@ -14,6 +14,8 @@ public final class Warnings {
 
     public static final String SIGNING_TIME_ABSENT = "signing_time_absent";
 
+    public static final String SIGNED_ATTRS_NOT_DER_ORDERED = "signed_attrs_not_der_ordered";
+
     private Warnings() {
     }
 }

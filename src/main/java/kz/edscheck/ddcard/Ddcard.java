@@ -62,6 +62,17 @@ public final class Ddcard {
         }
     }
 
+    public static boolean hasEmbeddedFiles(byte[] raw) {
+        if (!"ddcard".equals(detectInputFormat(raw))) {
+            return false;
+        }
+        try (PDDocument doc = Loader.loadPDF(raw)) {
+            return !embeddedFilesInOrder(doc).isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public static DdcardContent parseDdcard(byte[] raw) {
         if (!"ddcard".equals(detectInputFormat(raw))) {
             throw new ContainerException(Messages.get(MsgKey.DDCARD_NOT_PDF));

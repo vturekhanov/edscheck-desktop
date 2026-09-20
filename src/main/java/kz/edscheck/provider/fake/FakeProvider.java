@@ -85,7 +85,8 @@ public final class FakeProvider implements VerificationProvider {
         }
         return new SignerVerification(
             ps.index(), ps.certificate(), ps.keyUsage(), timestampInfo,
-            ps.archive(), outcomes, ps.chain(), List.of(), ps.missingBbAttrs());
+            ps.archive(), outcomes, ps.chain(), List.of(), ps.missingBbAttrs(),
+            ps.signedAttrsDerOrdered());
     }
 
     private static Instant revocationValidFrom(FakeScenario scenario, TimestampInfo timestampInfo) {

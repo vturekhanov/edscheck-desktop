@@ -22,6 +22,6 @@ public final class CommonSigners {
             Map.of(Stage.CHAIN, new StageOutcome(CheckStatus.FAIL, UNRESOLVED_DETAIL)),
             ps.chain(),
             List.of(),
-            ps.missingBbAttrs());
+            ps.missingBbAttrs(), ps.signedAttrsDerOrdered());
     }
 }

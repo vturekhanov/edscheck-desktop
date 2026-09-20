@@ -19,6 +19,12 @@ import kz.edscheck.domain.VerificationRequest;
 import kz.edscheck.errors.ContainerException;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
+import kz.edscheck.pades.PadesCoverage;
+import kz.edscheck.pades.PadesDss;
+import kz.edscheck.pades.PadesDssMaterial;
+import kz.edscheck.pades.PadesPdf;
+import kz.edscheck.pades.PadesSignatureInput;
+import kz.edscheck.pades.PadesSignatureObject;
 import kz.edscheck.provider.ProviderResult;
 import kz.edscheck.provider.SignerVerification;
 import kz.edscheck.provider.StageOutcome;
@@ -55,12 +61,22 @@ public final class VerificationEngine {
     public SignedContainer verify(VerificationRequest request, byte[] container) {
 
         if (Ddcard.detectInputFormat(container).equals("ddcard")) {
-            return verifyDdcard(request, container);
+            return verifyPdf(request, container);
         }
         if (XmlDetect.looksLikeXml(container)) {
             return XmlVerifier.verify(request, container, null, trace);
         }
         return verifyCms(request, container);
+    }
+
+    private SignedContainer verifyPdf(VerificationRequest request, byte[] container) {
+        if (Ddcard.hasEmbeddedFiles(container)) {
+            return verifyDdcard(request, container);
+        }
+        if (PadesPdf.looksLikePades(container)) {
+            return verifyPades(request, container);
+        }
+        throw new ContainerException(Messages.get(MsgKey.PADES_NO_DDCARD_NO_PADES));
     }
 
     public SignedContainer verify(VerificationRequest request, DocumentSource container) {
@@ -79,7 +95,7 @@ public final class VerificationEngine {
                 throw new ContainerException(
                     Messages.get(MsgKey.CONTAINER_READ_FAILED, e.getMessage()), e);
             }
-            return verifyDdcard(request, bytes);
+            return verifyPdf(request, bytes);
         }
         boolean xml;
         try {
@@ -110,6 +126,47 @@ public final class VerificationEngine {
         return new SignedContainer(
             request.containerPath(), result.encoding(), result.signaturesTotal(),
             signatures, "cms", null, result.authority());
+    }
+
+    private SignedContainer verifyPades(VerificationRequest request, byte[] container) {
+        List<PadesSignatureObject> objects = PadesPdf.extract(container);
+        PadesDssMaterial dss = PadesDss.extract(container);
+        Set<Stage> capabilities = provider.capabilities();
+
+        List<Signature> signatures = new ArrayList<>();
+        String authority = null;
+        for (PadesSignatureObject object : objects) {
+            if (!object.isSignature()) {
+                continue;
+            }
+            PadesSignatureInput input =
+                new PadesSignatureInput(signatures.size(), object, objects, container, dss);
+            ProviderResult result = provider.supportsDetached()
+                ? provider.verifyPades(request, input)
+                : provider.verify(request, reconstructForFallback(object, container));
+            if (authority == null) {
+                authority = result.authority();
+            }
+            for (SignerVerification sv : result.signers()) {
+                sv.setIndex(signatures.size());
+                signatures.add(assembleSignature(sv, capabilities));
+            }
+        }
+
+        for (PadesSignatureObject lonely : PadesCoverage.unassignedArchiveTimestamps(objects)) {
+            trace.v(Messages.get(MsgKey.PADES_TRACE_UNASSIGNED_ARCHIVE_TIMESTAMP, lonely.fieldName()));
+        }
+
+        return new SignedContainer(
+            request.containerPath(), Encoding.DER, signatures.size(), signatures, "pades", null, authority);
+    }
+
+    private static byte[] reconstructForFallback(PadesSignatureObject object, byte[] container) {
+        int[] byteRange = object.byteRange();
+        byte[] signed = new byte[byteRange[1] + byteRange[3]];
+        System.arraycopy(container, byteRange[0], signed, 0, byteRange[1]);
+        System.arraycopy(container, byteRange[2], signed, byteRange[1], byteRange[3]);
+        return Ddcard.reconstructAttached(object.contents(), signed);
     }
 
     private SignedContainer verifyDdcard(VerificationRequest request, byte[] container) {
@@ -189,7 +246,8 @@ public final class VerificationEngine {
 
     private Signature assembleSignature(SignerVerification sv, Set<Stage> capabilities) {
 
-        Rules.CheckAndWarnings signedAttrsResult = Rules.signedAttrsCheck(sv.missingBbAttrs(), policy);
+        Rules.CheckAndWarnings signedAttrsResult =
+            Rules.signedAttrsCheck(sv.missingBbAttrs(), sv.signedAttrsDerOrdered(), policy);
         return assembleSignature(sv, capabilities, policy, signedAttrsResult);
     }
 

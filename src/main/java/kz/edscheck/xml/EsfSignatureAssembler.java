@@ -85,7 +85,7 @@ final class EsfSignatureAssembler {
 
         SignerVerification sv = new SignerVerification(
             0, invoice.certificate(), keyUsage, TimestampInfo.absent(), ArchiveTimestampInfo.none(),
-            outcomes, chain, List.of(), List.of(), authority, chainResult.intermediateCaRevocations());
+            outcomes, chain, List.of(), List.of(), true, authority, chainResult.intermediateCaRevocations());
 
         return VerificationEngine.assembleSignature(sv, Set.of(), policy, signedAttrsResult);
     }

@@ -23,6 +23,7 @@ import org.bouncycastle.asn1.cms.ContentInfo;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.cms.CMSSignedData;
 import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.tsp.TimeStampToken;
@@ -61,6 +62,8 @@ public final class ArchiveTs {
         public List<byte[]> crlBlobs = List.of();
         public List<byte[]> attrBlobs = List.of();
         public byte[] imprintBlob;
+
+        public byte[] precomputedImprint;
         public String parseError;
 
         public ParsedArchiveTimestamp(int position) {
@@ -128,30 +131,7 @@ public final class ArchiveTs {
         }
 
         try {
-            var genTimeDate = tst.getTimeStampInfo().getGenTime();
-            mark.genTime = genTimeDate != null ? genTimeDate.toInstant() : null;
-            mark.imprintAlgOid = tst.getTimeStampInfo().getMessageImprintAlgOID().getId();
-            mark.recordedImprint = tst.getTimeStampInfo().getMessageImprintDigest();
-
-            Store<X509CertificateHolder> tcs = tstCms.getCertificates();
-            JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
-
-            @SuppressWarnings("unchecked")
-            Collection<X509CertificateHolder> tsaCertColl = tcs.getMatches(tstSi.getSID());
-            List<X509Certificate> tsaCerts = new ArrayList<>();
-            for (X509CertificateHolder h : tcs.getMatches(null)) {
-                tsaCerts.add(converter.getCertificate(h));
-            }
-            mark.tsaCerts = tsaCerts;
-            if (!tsaCertColl.isEmpty()) {
-                mark.tsaCert = converter.getCertificate(tsaCertColl.iterator().next());
-                try {
-                    List<String> eku = mark.tsaCert.getExtendedKeyUsage();
-                    mark.tsaEkuOk = eku != null && eku.contains("1.3.6.1.5.5.7.3.8");
-                } catch (CertificateParsingException e) {
-                    mark.tsaEkuOk = null;
-                }
-            }
+            fillTstBasics(mark, tst, tstCms, tstSi);
         } catch (Exception e) {
             mark.parseError = Messages.get(MsgKey.ARCHIVE_TS_TST_PARSE_FAILED, e.getMessage());
             return mark;
@@ -183,6 +163,50 @@ public final class ArchiveTs {
             return mark;
         }
         mark.imprintBlob = concat(imprintPrefix, atsIndexDer);
+        return mark;
+    }
+
+    private static void fillTstBasics(
+            ParsedArchiveTimestamp mark, TimeStampToken tst, CMSSignedData tstCms, SignerInformation tstSi)
+            throws Exception {
+        var genTimeDate = tst.getTimeStampInfo().getGenTime();
+        mark.genTime = genTimeDate != null ? genTimeDate.toInstant() : null;
+        mark.imprintAlgOid = tst.getTimeStampInfo().getMessageImprintAlgOID().getId();
+        mark.recordedImprint = tst.getTimeStampInfo().getMessageImprintDigest();
+
+        Store<X509CertificateHolder> tcs = tstCms.getCertificates();
+        JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
+
+        @SuppressWarnings("unchecked")
+        Collection<X509CertificateHolder> tsaCertColl = tcs.getMatches(tstSi.getSID());
+        List<X509Certificate> tsaCerts = new ArrayList<>();
+        for (X509CertificateHolder h : tcs.getMatches(null)) {
+            tsaCerts.add(converter.getCertificate(h));
+        }
+        mark.tsaCerts = tsaCerts;
+        if (!tsaCertColl.isEmpty()) {
+            mark.tsaCert = converter.getCertificate(tsaCertColl.iterator().next());
+            try {
+                List<String> eku = mark.tsaCert.getExtendedKeyUsage();
+                mark.tsaEkuOk = eku != null && eku.contains("1.3.6.1.5.5.7.3.8");
+            } catch (CertificateParsingException e) {
+                mark.tsaEkuOk = null;
+            }
+        }
+    }
+
+    public static ParsedArchiveTimestamp parsePadesMark(int position, byte[] tstDer, byte[] precomputedImprint) {
+        ParsedArchiveTimestamp mark = new ParsedArchiveTimestamp(position);
+        mark.tstDer = tstDer;
+        mark.precomputedImprint = precomputedImprint;
+        try {
+            ContentInfo ci = ContentInfo.getInstance(new ASN1InputStream(tstDer).readObject());
+            CMSSignedData tstCms = new CMSSignedData(ci);
+            SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
+            fillTstBasics(mark, new TimeStampToken(ci), tstCms, tstSi);
+        } catch (Exception e) {
+            mark.parseError = Messages.get(MsgKey.ARCHIVE_TS_TST_PARSE_FAILED, e.getMessage());
+        }
         return mark;
     }
 

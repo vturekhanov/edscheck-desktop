@@ -79,6 +79,13 @@ public final class Parsing {
     private static final ASN1ObjectIdentifier OID_SIGNING_CERTIFICATE_V2 =
         new ASN1ObjectIdentifier("1.2.840.113549.1.9.16.2.47");
 
+    private static final ASN1ObjectIdentifier OID_SIGNING_CERTIFICATE_V1 =
+        new ASN1ObjectIdentifier("1.2.840.113549.1.9.16.2.12");
+
+    public static final String PADES_ATTR_SIGNING_CERTIFICATE = "signing-certificate(-v2)";
+
+    public static final String PADES_ATTR_SIGNING_TIME = "/M|signing-time";
+
     private record MandatoryBbAttr(ASN1ObjectIdentifier oid, String name) {
     }
 
@@ -157,6 +164,25 @@ public final class Parsing {
         if (precomputedDigests != null && !precomputedDigests.isEmpty()
                 && d.sd().getSignedContent() == null) {
             signerInfos = bindDigests(signerInfos, d.der(), precomputedDigests);
+        }
+        return assembleParsedContainer(
+            d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject());
+    }
+
+    public static ParsedContainer parseByteRange(
+            byte[] cms, List<X509Certificate> extraCerts, byte[] fileBytes, int[] byteRange) {
+        Decoded d = decodeForParsing(cms, extraCerts);
+        Collection<SignerInformation> signerInfos = d.signerInfos();
+        Map<String, MessageDigest> mdByOid = neededDigestAlgorithms(signerInfos);
+        if (!mdByOid.isEmpty()) {
+            Map<String, byte[]> digestsByOid = new LinkedHashMap<>();
+            for (Map.Entry<String, MessageDigest> e : mdByOid.entrySet()) {
+                MessageDigest md = e.getValue();
+                md.update(fileBytes, byteRange[0], byteRange[1]);
+                md.update(fileBytes, byteRange[2], byteRange[3]);
+                digestsByOid.put(e.getKey(), md.digest());
+            }
+            signerInfos = bindDigests(signerInfos, d.der(), digestsByOid);
         }
         return assembleParsedContainer(
             d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject());
@@ -259,7 +285,8 @@ public final class Parsing {
                 hasRev, tst.tsaEkuOk(), chain, archive.info(),
                 cert, ess.alg(), ess.hash(), tst.tsaCert(), tst.tsaCerts(), tst.tokenDer(),
                 si.getSignature(), tst.imprintAlg(), tst.imprintHash(), archive.marks(), si,
-                missingMandatoryBbAttrs(si.getSignedAttributes()), tst.crlBlobs()));
+                missingMandatoryBbAttrs(si.getSignedAttributes()), tst.crlBlobs(),
+                signedAttrsDerOrdered(si)));
             bcOrderKeys.add(signerInfoSignatureKey(si));
             index++;
         }
@@ -391,7 +418,52 @@ public final class Parsing {
             ps.chain(), ps.archive(), ps.signerCertRaw(), ps.signingCertHashAlg(), ps.signingCertHash(),
             ps.tsaCertRaw(), ps.tsaCertsRaw(), ps.tstTokenDer(), ps.signatureValue(),
             ps.tstImprintAlg(), ps.tstImprintHash(), ps.archiveMarks(), ps.signerInfo(),
-            ps.missingBbAttrs(), ps.tstCrlBlobs());
+            ps.missingBbAttrs(), ps.tstCrlBlobs(), ps.signedAttrsDerOrdered());
+    }
+
+    static byte[] byteRangeDigest(byte[] fileBytes, int[] byteRange, String algOid) {
+        String name = DigestAlgorithms.jceName(algOid);
+        if (name == null || byteRange.length != 4) {
+            return null;
+        }
+        try {
+            MessageDigest md = MessageDigest.getInstance(name, ActiveBackend.current().jceProviderName());
+            md.update(fileBytes, byteRange[0], byteRange[1]);
+            md.update(fileBytes, byteRange[2], byteRange[3]);
+            return md.digest();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    static ParsedSigner withIndexAndMissingAttrs(
+            ParsedSigner ps, int newIndex, List<String> missingAttrs,
+            List<ArchiveTs.ParsedArchiveTimestamp> archiveMarks, ArchiveTimestampInfo archive) {
+        return new ParsedSigner(
+            newIndex, ps.certificate(), ps.keyUsage(), ps.signingTime(), ps.tstGenTime(),
+            ps.hasTimestamp(), ps.hasRevocationValues(), ps.tsaTimestampingEkuOk(),
+            ps.chain(), archive, ps.signerCertRaw(), ps.signingCertHashAlg(), ps.signingCertHash(),
+            ps.tsaCertRaw(), ps.tsaCertsRaw(), ps.tstTokenDer(), ps.signatureValue(),
+            ps.tstImprintAlg(), ps.tstImprintHash(), archiveMarks, ps.signerInfo(),
+            missingAttrs, ps.tstCrlBlobs(), ps.signedAttrsDerOrdered());
+    }
+
+    public static List<String> missingMandatoryPadesAttrs(AttributeTable at, boolean hasSigningDate) {
+        List<String> missing = new ArrayList<>();
+        if (at == null || at.get(CMSAttributes.contentType) == null) {
+            missing.add("content-type");
+        }
+        if (at == null || at.get(CMSAttributes.messageDigest) == null) {
+            missing.add("message-digest");
+        }
+        if (at == null
+                || (at.get(OID_SIGNING_CERTIFICATE_V2) == null && at.get(OID_SIGNING_CERTIFICATE_V1) == null)) {
+            missing.add(PADES_ATTR_SIGNING_CERTIFICATE);
+        }
+        if (!hasSigningDate && (at == null || at.get(CMSAttributes.signingTime) == null)) {
+            missing.add(PADES_ATTR_SIGNING_TIME);
+        }
+        return missing;
     }
 
     private static List<String> missingMandatoryBbAttrs(Collection<SignerInformation> signerInfos) {
@@ -417,6 +489,22 @@ public final class Parsing {
             }
         }
         return missing;
+    }
+
+    private static boolean signedAttrsDerOrdered(SignerInformation si) {
+        ASN1Set signedAttrs = si.toASN1Structure().getAuthenticatedAttributes();
+        if (signedAttrs == null || signedAttrs.size() < 2) {
+            return true;
+        }
+        try {
+            List<byte[]> encodings = new ArrayList<>();
+            for (int i = 0; i < signedAttrs.size(); i++) {
+                encodings.add(signedAttrs.getObjectAt(i).toASN1Primitive().getEncoded(ASN1Encoding.DER));
+            }
+            return DerSetOrder.isCanonicalOrder(encodings);
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     static String cadesLevel(

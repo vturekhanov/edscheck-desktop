@@ -72,6 +72,7 @@ public enum MsgKey {
     RULES_TIMESTAMP_INVALID("rules.timestamp_invalid", 0),
     RULES_SIGNED_ATTRS_REQUIRED_MISSING("rules.signed_attrs_required_missing", 1),
     RULES_SIGNED_ATTRS_MISSING("rules.signed_attrs_missing", 1),
+    RULES_SIGNED_ATTRS_NOT_DER_ORDERED("rules.signed_attrs_not_der_ordered", 0),
     RULES_ARCHIVE_TS_LEGACY_UNSUPPORTED("rules.archive_ts_legacy_unsupported", 0),
     RULES_ARCHIVE_TS_NONE("rules.archive_ts_none", 0),
     RULES_ARCHIVE_TS_PROVIDER_UNSUPPORTED("rules.archive_ts_provider_unsupported", 0),
@@ -107,6 +108,7 @@ public enum MsgKey {
     PROVIDER_TRACE_ANCHOR_BOUND_WITH_CA("provider.trace_anchor_bound_with_ca", 1),
     PROVIDER_TRACE_ANCHOR_NOT_BOUND("provider.trace_anchor_not_bound", 1),
     PROVIDER_ANCHOR_SELF_SIGNED_MISMATCH("provider.anchor_self_signed_mismatch", 0),
+    PROVIDER_ANCHOR_EXPIRED("provider.anchor_expired", 1),
     PROVIDER_ANCHOR_ROOT_NOT_TRUSTED("provider.anchor_root_not_trusted", 0),
     PROVIDER_ANCHOR_ISSUER_NOT_FOUND_FILE("provider.anchor_issuer_not_found_file", 0),
     PROVIDER_ANCHOR_ISSUER_NOT_FOUND("provider.anchor_issuer_not_found", 0),
@@ -118,6 +120,8 @@ public enum MsgKey {
     PROVIDER_TRACE_UNRESOLVED_SIGNER("provider.trace_unresolved_signer", 0),
     PROVIDER_TRACE_BB_ATTRS_OK("provider.trace_bb_attrs_ok", 0),
     PROVIDER_TRACE_BB_ATTRS_MISSING("provider.trace_bb_attrs_missing", 1),
+    PROVIDER_TRACE_SIGNED_ATTRS_DER_ORDER_OK("provider.trace_signed_attrs_der_order_ok", 0),
+    PROVIDER_TRACE_SIGNED_ATTRS_DER_ORDER_VIOLATED("provider.trace_signed_attrs_der_order_violated", 0),
     PROVIDER_CHAIN_NOT_ANCHORED("provider.chain_not_anchored", 0),
     PROVIDER_TRACE_INTEGRITY_OK("provider.trace_integrity_ok", 0),
     PROVIDER_TRACE_INTEGRITY_MISMATCH("provider.trace_integrity_mismatch", 0),
@@ -248,8 +252,6 @@ public enum MsgKey {
     ARCHIVE_TS_MARK_FAILURE("archive_ts.mark_failure", 3),
     ARCHIVE_TS_ALL_VALID("archive_ts.all_valid", 1),
 
-    ARCHIVE_TS_XML_IMPRINT_NOT_RECOMPUTED("archive_ts.xml_imprint_not_recomputed", 0),
-    ARCHIVE_TS_XML_IMPRINT_MISMATCH("archive_ts.xml_imprint_mismatch", 0),
     ARCHIVE_TS_XML_DETACHED_NOT_SUPPORTED("archive_ts.xml_detached_not_supported", 0),
 
     DDCARD_NOT_PDF("ddcard.not_pdf", 0),
@@ -260,6 +262,17 @@ public enum MsgKey {
     DDCARD_ATTACHMENT_NOT_FOUND("ddcard.attachment_not_found", 1),
     DDCARD_ATTACHMENT_NO_EF_STREAM("ddcard.attachment_no_ef_stream", 0),
     DDCARD_ATTACHMENT_OPEN_FAILED("ddcard.attachment_open_failed", 2),
+
+    PADES_PARSE_FAILED("pades.parse_failed", 1),
+    PADES_NO_ACROFORM_FIELDS("pades.no_acroform_fields", 0),
+    PADES_BYTE_RANGE_MALFORMED("pades.byte_range_malformed", 0),
+    PADES_CONTENTS_GAP_MISMATCH("pades.contents_gap_mismatch", 0),
+    PADES_SUBFILTER_UNSUPPORTED("pades.subfilter_unsupported", 1),
+    PADES_SUBFILTER_ABSENT("pades.subfilter_absent", 0),
+    PADES_MULTIPLE_SIGNER_INFOS("pades.multiple_signer_infos", 0),
+    PADES_NO_DDCARD_NO_PADES("pades.no_ddcard_no_pades", 0),
+    PADES_TRACE_UNASSIGNED_ARCHIVE_TIMESTAMP("pades.trace_unassigned_archive_timestamp", 1),
+    PROVIDER_TRACE_PADES_ONLINE_SKIPPED("provider.trace_pades_online_skipped", 2),
 
     KALKAN_JAR_PATH_PROPERTY_MISSING("kalkan_jar.path_property_missing", 1),
     KALKAN_JAR_NOT_FOUND("kalkan_jar.not_found", 1),
@@ -342,6 +355,7 @@ public enum MsgKey {
     VERIFY_LIBRARY_JARS_CONFIRMED("verify_library_jars.confirmed", 1),
 
     VERIFICATION_PROVIDER_DETACHED_UNSUPPORTED("verification_provider.detached_unsupported", 1),
+    VERIFICATION_PROVIDER_PADES_UNSUPPORTED("verification_provider.pades_unsupported", 1),
 
     MESSAGES_ARG_COUNT_MISMATCH("messages.arg_count_mismatch", 3),
     MESSAGES_RESOURCE_NOT_FOUND("messages.resource_not_found", 1),
