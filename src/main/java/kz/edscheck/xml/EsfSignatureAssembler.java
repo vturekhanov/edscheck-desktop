@@ -41,7 +41,7 @@ final class EsfSignatureAssembler {
         Map<String, byte[]> externalOcsp = request.externalOcsp();
         PolicyProfile policy = PolicyProfile.ncaPolicy();
         X509Certificate signerCert = invoice.certificateRaw();
-        Instant refTime = Instant.now(); 
+        Instant refTime = request.checkTime(); 
 
         String label = Messages.get(MsgKey.PROVIDER_LABEL_SIGNATURE, 1);
 
@@ -87,7 +87,7 @@ final class EsfSignatureAssembler {
             0, invoice.certificate(), keyUsage, TimestampInfo.absent(), ArchiveTimestampInfo.none(),
             outcomes, chain, List.of(), List.of(), true, authority, chainResult.intermediateCaRevocations());
 
-        return VerificationEngine.assembleSignature(sv, Set.of(), policy, signedAttrsResult);
+        return VerificationEngine.assembleSignature(sv, Set.of(), policy, signedAttrsResult, request.checkTime());
     }
 
     private static Map<X500Principal, X509Certificate> bySubject(List<X509Certificate> trust, X509Certificate signerCert) {

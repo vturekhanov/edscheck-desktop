@@ -18,6 +18,7 @@ import org.w3c.dom.NodeList;
 import kz.edscheck.domain.Certificate;
 import kz.edscheck.domain.CheckStatus;
 import kz.edscheck.domain.DocumentSource;
+import kz.edscheck.domain.ReferenceTime;
 import kz.edscheck.domain.Stage;
 import kz.edscheck.domain.VerificationRequest;
 import kz.edscheck.domain.Signature;
@@ -52,7 +53,8 @@ final class XmlSignatureAssembler {
         for (ParsedXmlSignature ps : signatures) {
             Element sigEl = (Element) sigElements.item(ps.index());
             result.add(assembleOne(
-                doc, sigEl, ps, trust, ignoreTruststore, crlPath, externalOcsp, policy, externalDocument, trace));
+                doc, sigEl, ps, trust, ignoreTruststore, crlPath, externalOcsp, policy, externalDocument,
+                request.checkTime(), trace));
         }
         return result;
     }
@@ -61,12 +63,12 @@ final class XmlSignatureAssembler {
             Document doc, Element sigEl, ParsedXmlSignature ps,
             List<X509Certificate> trust, boolean ignoreTruststore, String crlPath,
             Map<String, byte[]> externalOcsp, PolicyProfile policy,
-            DocumentSource externalDocument, Trace trace) {
+            DocumentSource externalDocument, Instant checkTime, Trace trace) {
         X509Certificate signerCert = ps.certificateRaw();
         List<X509Certificate> containerCerts = containerCerts(signerCert, ps.certificateValues());
 
         Instant provisionalGenTime = peekGenTime(ps.signatureTimestampToken());
-        Instant refTime = provisionalGenTime != null ? provisionalGenTime : Instant.now();
+        Instant refTime = provisionalGenTime != null ? provisionalGenTime : checkTime;
 
         String label = Messages.get(MsgKey.PROVIDER_LABEL_SIGNATURE, ps.index() + 1);
 
@@ -122,7 +124,7 @@ final class XmlSignatureAssembler {
             outcomes, chain, List.of(), List.of(), true, authority,
             chainResult.intermediateCaRevocations(), archiveResult.markOutcomes());
 
-        return VerificationEngine.assembleSignature(sv, Set.of(), policy, signedAttrsResult);
+        return VerificationEngine.assembleSignature(sv, Set.of(), policy, signedAttrsResult, checkTime);
     }
 
     private static StageOutcome toStageOutcome(XmlIntegrityResult integrity) {
@@ -144,7 +146,7 @@ final class XmlSignatureAssembler {
                 org.bouncycastle.asn1.cms.ContentInfo.getInstance(ain.readObject());
             org.bouncycastle.tsp.TimeStampToken tst = new org.bouncycastle.tsp.TimeStampToken(ci);
             var genTime = tst.getTimeStampInfo().getGenTime();
-            return genTime == null ? null : genTime.toInstant();
+            return genTime == null ? null : ReferenceTime.truncate(genTime.toInstant());
         } catch (Exception e) {
             return null;
         }

@@ -13,6 +13,7 @@ import java.util.List;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import kz.edscheck.domain.ReferenceTime;
 import kz.edscheck.domain.Stage;
 import kz.edscheck.domain.VerificationRequest;
 import kz.edscheck.msg.Messages;
@@ -54,7 +55,7 @@ public final class XmlOnlineRequests {
                 String label = Messages.get(MsgKey.PROVIDER_LABEL_SIGNATURE, 1);
                 addSharedTargetRequest(requests, signerCert, List.of(), List.of(), externalCrl, containerCerts, trust,
                     label, 0, Stage.REVOCATION);
-                addCaPathRequests(requests, signerCert, containerCerts, trust, Instant.now(), ignoreTruststore,
+                addCaPathRequests(requests, signerCert, containerCerts, trust, request.checkTime(), ignoreTruststore,
                     List.of(), List.of(), externalCrl, label, 0, Stage.CHAIN);
                 return requests;
             }
@@ -70,7 +71,7 @@ public final class XmlOnlineRequests {
                 if (!resolveAnchor(signerCert, containerCerts, trust, ignoreTruststore).anchored()) {
                     continue;
                 }
-                Instant refTime = peekGenTime(ps.signatureTimestampToken());
+                Instant refTime = peekGenTime(ps.signatureTimestampToken(), request.checkTime());
                 String label = Messages.get(MsgKey.PROVIDER_LABEL_SIGNATURE, ps.index() + 1);
 
                 addSharedTargetRequest(requests, signerCert, ps.ocspValues(), ps.crlValues(), externalCrl, containerCerts,
@@ -118,9 +119,9 @@ public final class XmlOnlineRequests {
         return result;
     }
 
-    private static Instant peekGenTime(byte[] tstDer) {
+    private static Instant peekGenTime(byte[] tstDer, Instant checkTime) {
         if (tstDer == null) {
-            return Instant.now();
+            return checkTime;
         }
         try {
             org.bouncycastle.asn1.ASN1InputStream ain = new org.bouncycastle.asn1.ASN1InputStream(tstDer);
@@ -128,9 +129,9 @@ public final class XmlOnlineRequests {
                 org.bouncycastle.asn1.cms.ContentInfo.getInstance(ain.readObject());
             org.bouncycastle.tsp.TimeStampToken tst = new org.bouncycastle.tsp.TimeStampToken(ci);
             var genTime = tst.getTimeStampInfo().getGenTime();
-            return genTime == null ? Instant.now() : genTime.toInstant();
+            return genTime == null ? checkTime : ReferenceTime.truncate(genTime.toInstant());
         } catch (Exception e) {
-            return Instant.now();
+            return checkTime;
         }
     }
 

@@ -54,6 +54,7 @@ import kz.edscheck.domain.Certificate;
 import kz.edscheck.domain.DocumentSource;
 import kz.edscheck.domain.Encoding;
 import kz.edscheck.domain.KeyAlgorithm;
+import kz.edscheck.domain.ReferenceTime;
 import kz.edscheck.errors.ContainerException;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
@@ -844,7 +845,8 @@ public final class Parsing {
             ContentInfo ci = ContentInfo.getInstance(value);
             TimeStampToken tst = new TimeStampToken(ci);
             var genTimeDate = tst.getTimeStampInfo().getGenTime();
-            Instant genTime = genTimeDate != null ? genTimeDate.toInstant() : null;
+
+            Instant genTime = genTimeDate != null ? ReferenceTime.truncate(genTimeDate.toInstant()) : null;
             String imprintAlg = tst.getTimeStampInfo().getMessageImprintAlgOID().getId();
             byte[] imprintHash = tst.getTimeStampInfo().getMessageImprintDigest();
 
@@ -975,7 +977,7 @@ public final class Parsing {
             ContentInfo ci = ContentInfo.getInstance(value);
             TimeStampToken tst = new TimeStampToken(ci);
             var genTime = tst.getTimeStampInfo().getGenTime();
-            return genTime != null ? genTime.toInstant() : null;
+            return genTime != null ? ReferenceTime.truncate(genTime.toInstant()) : null;
         } catch (Exception e) {
             return null;
         }

@@ -1,7 +1,9 @@
 package kz.edscheck.app;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import kz.edscheck.domain.DocumentSource;
 import kz.edscheck.domain.Environment;
@@ -20,9 +22,11 @@ public record RunnerParams(
         boolean ignoreTruststore,
         String lib,
         Trace trace,
-        Map<String, byte[]> externalOcsp) {
+        Map<String, byte[]> externalOcsp,
+        Instant checkTime) {
 
     public RunnerParams {
+        Objects.requireNonNull(checkTime, "checkTime");
         roots = roots == null ? List.of() : List.copyOf(roots);
         crls = crls == null ? List.of() : List.copyOf(crls);
         trace = trace == null ? Trace.NONE : trace;
@@ -32,8 +36,9 @@ public record RunnerParams(
     public RunnerParams(
             DocumentSource containerSource, DocumentSource documentSource, String documentName,
             String containerPathHint, String ca, String engine, Environment env,
-            List<String> roots, List<String> crls, boolean ignoreTruststore, String lib, Trace trace) {
+            List<String> roots, List<String> crls, boolean ignoreTruststore, String lib, Trace trace,
+            Instant checkTime) {
         this(containerSource, documentSource, documentName, containerPathHint, ca, engine, env,
-            roots, crls, ignoreTruststore, lib, trace, Map.of());
+            roots, crls, ignoreTruststore, lib, trace, Map.of(), checkTime);
     }
 }

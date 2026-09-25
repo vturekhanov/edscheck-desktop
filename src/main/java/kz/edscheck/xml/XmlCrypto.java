@@ -43,6 +43,7 @@ import org.w3c.dom.NodeList;
 
 import kz.edscheck.domain.CheckStatus;
 import kz.edscheck.domain.DocumentSource;
+import kz.edscheck.domain.ReferenceTime;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.provider.CaRevocationFact;
@@ -133,7 +134,7 @@ final class XmlCrypto {
             SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
             TimeStampToken tst = new TimeStampToken(ci);
             Instant genTime = tst.getTimeStampInfo().getGenTime() == null ? null
-                : tst.getTimeStampInfo().getGenTime().toInstant();
+                : ReferenceTime.truncate(tst.getTimeStampInfo().getGenTime().toInstant());
 
             Store<X509CertificateHolder> certStore = tstCms.getCertificates();
             JcaX509CertificateConverter converter = new JcaX509CertificateConverter();

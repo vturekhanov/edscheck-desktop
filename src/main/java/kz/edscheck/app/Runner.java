@@ -45,7 +45,7 @@ public final class Runner {
         TrustMaterial trust = new TrustMaterial(roots, params.crls());
         VerificationRequest request = new VerificationRequest(
             params.containerPathHint(), params.ca(), params.env(), trust, params.lib(),
-            Map.of(), params.externalOcsp(), params.ignoreTruststore());
+            Map.of(), params.externalOcsp(), params.ignoreTruststore(), params.checkTime());
 
         VerificationProvider provider = buildProvider(params.ca(), params.engine(), params.trace());
         PolicyProfile policy = PolicyProfile.ncaPolicy();

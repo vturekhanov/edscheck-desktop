@@ -21,6 +21,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import kz.edscheck.domain.ReferenceTime;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.provider.ArchiveMarkOutcome;
@@ -206,7 +207,7 @@ final class XmlArchiveTimestamp {
         SignerInformation tstSi = tstCms.getSignerInfos().getSigners().iterator().next();
         TimeStampToken tst = new TimeStampToken(ci);
         Instant genTime = tst.getTimeStampInfo().getGenTime() == null ? null
-            : tst.getTimeStampInfo().getGenTime().toInstant();
+            : ReferenceTime.truncate(tst.getTimeStampInfo().getGenTime().toInstant());
         String imprintAlgOid = tst.getTimeStampInfo().getMessageImprintAlgOID().getId();
         byte[] recordedImprint = tst.getTimeStampInfo().getMessageImprintDigest();
 

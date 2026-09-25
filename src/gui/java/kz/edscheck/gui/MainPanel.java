@@ -407,10 +407,11 @@ public final class MainPanel extends JPanel {
         lastContainerFile = file;
         DocumentSource documentSource = document != null ? DocumentSource.ofFile(document.toPath()) : null;
         String documentName = document != null ? document.getName() : null;
+
         RunnerParams params = new RunnerParams(
             DocumentSource.ofFile(file.toPath()), documentSource, documentName, file.getName(),
             "auto", informationalMode ? "bc" : "kalkan-java", Environment.PROD, List.of(), List.of(),
-            false, null, Trace.NONE);
+            false, null, Trace.NONE, Instant.now());
         checkService.submit(params, result -> SwingUtilities.invokeLater(() -> handleResult(result)));
     }
 

@@ -234,7 +234,7 @@ public final class JceVerificationProvider implements VerificationProvider {
                 continue;
             }
             Instant refTime = ps.hasTimestamp() && ps.tstGenTime() != null
-                ? ps.tstGenTime() : Instant.now();
+                ? ps.tstGenTime() : request.checkTime();
 
             TimestampInfo timestamp = ps.hasTimestamp()
                 ? timestampInfo(ps, containerCerts, trust, refTime, ignoreTruststore, parsed.crlBlobs(), crlPath,
@@ -756,7 +756,7 @@ public final class JceVerificationProvider implements VerificationProvider {
             if (!anchor.anchored()) {
                 continue;
             }
-            Instant refTime = ps.hasTimestamp() && ps.tstGenTime() != null ? ps.tstGenTime() : Instant.now();
+            Instant refTime = ps.hasTimestamp() && ps.tstGenTime() != null ? ps.tstGenTime() : request.checkTime();
             AttributeTable ut = ps.signerInfo().getUnsignedAttributes();
             Attribute signerRevAttr = ut == null ? null : ut.get(OID_REVVALUES);
             String signerDigestOid = ps.signerInfo().getDigestAlgOID();

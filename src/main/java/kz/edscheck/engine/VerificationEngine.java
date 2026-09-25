@@ -121,7 +121,7 @@ public final class VerificationEngine {
         Set<Stage> capabilities = provider.capabilities();
         List<Signature> signatures = new ArrayList<>();
         for (SignerVerification sv : result.signers()) {
-            signatures.add(assembleSignature(sv, capabilities));
+            signatures.add(assembleSignature(sv, capabilities, request.checkTime()));
         }
         return new SignedContainer(
             request.containerPath(), result.encoding(), result.signaturesTotal(),
@@ -149,7 +149,7 @@ public final class VerificationEngine {
             }
             for (SignerVerification sv : result.signers()) {
                 sv.setIndex(signatures.size());
-                signatures.add(assembleSignature(sv, capabilities));
+                signatures.add(assembleSignature(sv, capabilities, request.checkTime()));
             }
         }
 
@@ -236,7 +236,7 @@ public final class VerificationEngine {
             }
             for (SignerVerification sv : result.signers()) {
                 sv.setIndex(assembled.size()); 
-                assembled.add(assembleSignature(sv, capabilities));
+                assembled.add(assembleSignature(sv, capabilities, request.checkTime()));
             }
         }
         return new SignedContainer(
@@ -244,18 +244,19 @@ public final class VerificationEngine {
             assembled.size(), assembled, containerFormat, documentName, authority);
     }
 
-    private Signature assembleSignature(SignerVerification sv, Set<Stage> capabilities) {
+    private Signature assembleSignature(SignerVerification sv, Set<Stage> capabilities, Instant checkTime) {
 
         Rules.CheckAndWarnings signedAttrsResult =
             Rules.signedAttrsCheck(sv.missingBbAttrs(), sv.signedAttrsDerOrdered(), policy);
-        return assembleSignature(sv, capabilities, policy, signedAttrsResult);
+        return assembleSignature(sv, capabilities, policy, signedAttrsResult, checkTime);
     }
 
     public static Signature assembleSignature(
             SignerVerification sv, Set<Stage> capabilities, PolicyProfile policy,
-            Rules.CheckAndWarnings signedAttrsResult) {
-        kz.edscheck.domain.ReferenceTime referenceTime = Rules.computeReferenceTime(sv.timestamp(), policy);
-        Rules.CheckAndWarnings tsResult = Rules.timestampCheck(sv.timestamp(), policy);
+            Rules.CheckAndWarnings signedAttrsResult, Instant checkTime) {
+        kz.edscheck.domain.ReferenceTime referenceTime =
+            Rules.computeReferenceTime(sv.timestamp(), checkTime, policy);
+        Rules.CheckAndWarnings tsResult = Rules.timestampCheck(sv.timestamp(), checkTime, policy);
         Check tsCheck = tsResult.check();
         Check signedAttrsCheck = signedAttrsResult.check();
         List<String> warnings = new ArrayList<>(tsResult.warnings());
@@ -267,19 +268,20 @@ public final class VerificationEngine {
         revocation = Rules.applyRevocationDate(revocation, revocationOutcome).check();
 
         revocation = Rules.applyRevocationPeriod(
-            revocation, revocationOutcome, referenceTime.value(), Instant.now(),
+            revocation, revocationOutcome, referenceTime.value(), checkTime,
             sv.certificate().notAfter(), policy);
 
         revocation = Rules.applyOcspSigningWindow(
             revocation, revocationOutcome, referenceTime.value(), policy);
 
         Rules.CheckAndWarnings archiveResult = Rules.archiveTimestampCheck(
-            sv.archive(), sv.outcomes().get(Stage.ARCHIVE_TIMESTAMP), sv.archiveMarkOutcomes(), policy);
+            sv.archive(), sv.outcomes().get(Stage.ARCHIVE_TIMESTAMP), sv.archiveMarkOutcomes(),
+            checkTime, policy);
         Check archiveCheck = archiveResult.check();
 
         Check chain = cryptoCheck(Stage.CHAIN, sv, capabilities);
         chain = Rules.applyIntermediateCaRevocation(
-            chain, sv.intermediateCaRevocations(), referenceTime.value(), policy);
+            chain, sv.intermediateCaRevocations(), referenceTime.value(), checkTime, policy);
 
         List<Check> checks = List.of(
             cryptoCheck(Stage.INTEGRITY, sv, capabilities),

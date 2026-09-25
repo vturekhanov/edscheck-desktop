@@ -35,34 +35,35 @@ public final class Rules {
     }
 
     public static kz.edscheck.domain.ReferenceTime computeReferenceTime(
-            TimestampInfo timestamp, PolicyProfile policy) {
+            TimestampInfo timestamp, Instant checkTime, PolicyProfile policy) {
         if (timestamp.present()
                 && Boolean.TRUE.equals(timestamp.valid())
                 && !Boolean.FALSE.equals(timestamp.tsaKeyUsageOk())
                 && timestamp.genTime() != null
-                && !tsaOcspWindowViolated(timestamp, policy)) {
+                && !tsaOcspWindowViolated(timestamp, checkTime, policy)) {
             return new kz.edscheck.domain.ReferenceTime(timestamp.genTime(), TimeSource.TIMESTAMP);
         }
-        return new kz.edscheck.domain.ReferenceTime(Instant.now(), TimeSource.CURRENT);
+        return new kz.edscheck.domain.ReferenceTime(checkTime, TimeSource.CURRENT);
     }
 
-    private static boolean tsaOcspWindowViolated(TimestampInfo timestamp, PolicyProfile policy) {
+    private static boolean tsaOcspWindowViolated(TimestampInfo timestamp, Instant checkTime, PolicyProfile policy) {
         if (timestamp.genTime() == null) {
             return false;
         }
         return revocationWindowViolated(
-            timestamp.tsaOcsp(), timestamp.genTime(), timestamp.tsaCertNotAfter(), policy);
+            timestamp.tsaOcsp(), timestamp.genTime(), checkTime, timestamp.tsaCertNotAfter(), policy);
     }
 
     private static boolean revocationWindowViolated(
-            StageOutcome outcome, Instant referenceTime, Instant certNotAfter, PolicyProfile policy) {
+            StageOutcome outcome, Instant referenceTime, Instant checkTime, Instant certNotAfter,
+            PolicyProfile policy) {
         if (outcome == null) {
             return false;
         }
         Check probe = new Check(Stage.REVOCATION, CheckStatus.PASS, null, null, outcome.source(),
             null, null, null);
         Check afterPeriod = applyRevocationPeriod(
-            probe, outcome, referenceTime, Instant.now(), certNotAfter, policy);
+            probe, outcome, referenceTime, checkTime, certNotAfter, policy);
         if (afterPeriod.status() != CheckStatus.PASS) {
             return true;
         }
@@ -70,11 +71,11 @@ public final class Rules {
             return false;
         }
         Instant thisUpdate = outcome.validFrom();
-        Duration lowerBound = policy.ocspSigningLowerBound();
+        Duration lowerBound = policy.ocspSigningLowerBound(referenceTime);
         return thisUpdate != null && lowerBound != null && thisUpdate.isBefore(referenceTime.minus(lowerBound));
     }
 
-    public static CheckAndWarnings timestampCheck(TimestampInfo timestamp, PolicyProfile policy) {
+    public static CheckAndWarnings timestampCheck(TimestampInfo timestamp, Instant checkTime, PolicyProfile policy) {
         List<String> warnings = new ArrayList<>();
         if (!timestamp.present()) {
             if (policy.requireTimestamp()) {
@@ -99,7 +100,7 @@ public final class Rules {
                     warnings);
             }
 
-            if (tsaOcspWindowViolated(timestamp, policy)) {
+            if (tsaOcspWindowViolated(timestamp, checkTime, policy)) {
                 return new CheckAndWarnings(
                     new Check(Stage.TIMESTAMP, CheckStatus.FAIL,
                         Messages.get(MsgKey.RULES_TIMESTAMP_TSA_OCSP_WINDOW),
@@ -108,7 +109,7 @@ public final class Rules {
             }
 
             StageOutcome caDecision = decideIntermediateCaRevocation(
-                timestamp.intermediateCaRevocations(), timestamp.genTime(), policy);
+                timestamp.intermediateCaRevocations(), timestamp.genTime(), checkTime, policy);
             if (caDecision.status() == CheckStatus.NOT_VERIFIED) {
                 return new CheckAndWarnings(
                     new Check(Stage.TIMESTAMP, CheckStatus.NOT_VERIFIED,
@@ -182,7 +183,7 @@ public final class Rules {
 
     public static CheckAndWarnings archiveTimestampCheck(
             ArchiveTimestampInfo info, StageOutcome outcome, List<ArchiveMarkOutcome> markOutcomes,
-            PolicyProfile policy) {
+            Instant checkTime, PolicyProfile policy) {
         List<String> warnings = new ArrayList<>();
         if (info.legacyCount() > 0) {
             warnings.add(Warnings.ARCHIVE_TS_FORMAT_UNSUPPORTED);
@@ -202,7 +203,7 @@ public final class Rules {
         if (markOutcomes != null && !markOutcomes.isEmpty()) {
             List<ArchiveTs.Failure> failures = new ArrayList<>();
             for (ArchiveMarkOutcome mo : markOutcomes) {
-                String revocationFailure = archiveMarkRevocationFailure(mo, policy);
+                String revocationFailure = archiveMarkRevocationFailure(mo, checkTime, policy);
                 String failure = ArchiveTs.markFailure(mo.parseError(), mo.sigOk(), mo.chainOk(), mo.chainOk(),
                     mo.tsaValidityOk(), mo.tsaEkuOk(), revocationFailure, mo.hashFailure());
                 if (failure != null) {
@@ -228,7 +229,8 @@ public final class Rules {
             warnings);
     }
 
-    private static String archiveMarkRevocationFailure(ArchiveMarkOutcome mo, PolicyProfile policy) {
+    private static String archiveMarkRevocationFailure(
+            ArchiveMarkOutcome mo, Instant checkTime, PolicyProfile policy) {
         Instant refTime = mo.genTime();
         StageOutcome own = mo.ownRevocation();
         if (own != null) {
@@ -238,7 +240,8 @@ public final class Rules {
             if (own.status() != CheckStatus.PASS) {
                 return Messages.get(MsgKey.RULES_ARCHIVE_TS_TSA_REVOCATION_FAILED, own.detail());
             }
-            if (refTime != null && revocationWindowViolated(own, refTime, mo.tsaCertNotAfter(), policy)) {
+            if (refTime != null
+                    && revocationWindowViolated(own, refTime, checkTime, mo.tsaCertNotAfter(), policy)) {
                 return Messages.get(MsgKey.RULES_ARCHIVE_TS_TSA_REVOCATION_FAILED,
                     Messages.get(MsgKey.RULES_CHAIN_INTERMEDIATE_CA_WINDOW_EXPIRED));
             }
@@ -246,7 +249,8 @@ public final class Rules {
         if (refTime == null) {
             return null;
         }
-        StageOutcome caDecision = decideIntermediateCaRevocation(mo.intermediateCaRevocations(), refTime, policy);
+        StageOutcome caDecision =
+            decideIntermediateCaRevocation(mo.intermediateCaRevocations(), refTime, checkTime, policy);
         if (caDecision.status() == CheckStatus.NOT_VERIFIED) {
             return Messages.get(MsgKey.RULES_ARCHIVE_TS_TSA_INTERMEDIATE_CA_REVOCATION_ABSENT);
         }
@@ -295,7 +299,7 @@ public final class Rules {
     }
 
     static StageOutcome decideIntermediateCaRevocation(
-            List<CaRevocationFact> facts, Instant referenceTime, PolicyProfile policy) {
+            List<CaRevocationFact> facts, Instant referenceTime, Instant checkTime, PolicyProfile policy) {
         if (facts.isEmpty()) {
             return new StageOutcome(CheckStatus.PASS);
         }
@@ -308,7 +312,7 @@ public final class Rules {
                 continue;
             }
             if (outcome.status() == CheckStatus.PASS
-                    && revocationWindowViolated(outcome, referenceTime, fact.certNotAfter(), policy)) {
+                    && revocationWindowViolated(outcome, referenceTime, checkTime, fact.certNotAfter(), policy)) {
                 outcome = StageOutcome.of(CheckStatus.FAIL)
                     .source(outcome.source())
                     .validFrom(outcome.validFrom())
@@ -331,11 +335,12 @@ public final class Rules {
     }
 
     public static Check applyIntermediateCaRevocation(
-            Check chain, List<CaRevocationFact> facts, Instant referenceTime, PolicyProfile policy) {
+            Check chain, List<CaRevocationFact> facts, Instant referenceTime, Instant checkTime,
+            PolicyProfile policy) {
         if (chain.status() != CheckStatus.PASS || facts.isEmpty()) {
             return chain;
         }
-        StageOutcome decision = decideIntermediateCaRevocation(facts, referenceTime, policy);
+        StageOutcome decision = decideIntermediateCaRevocation(facts, referenceTime, checkTime, policy);
         if (decision.status() == CheckStatus.NOT_VERIFIED) {
             return new Check(Stage.CHAIN, CheckStatus.FAIL,
                 Messages.get(MsgKey.RULES_CHAIN_INTERMEDIATE_CA_REVOCATION_ABSENT));
@@ -439,7 +444,7 @@ public final class Rules {
             return check;
         }
         Instant thisUpdate = outcome.validFrom();
-        Duration lowerBound = policy.ocspSigningLowerBound();
+        Duration lowerBound = policy.ocspSigningLowerBound(referenceTime);
         if (thisUpdate == null || lowerBound == null) {
             return check;
         }

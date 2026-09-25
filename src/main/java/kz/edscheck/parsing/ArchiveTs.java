@@ -29,6 +29,7 @@ import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.tsp.TimeStampToken;
 import org.bouncycastle.util.Store;
 
+import kz.edscheck.domain.ReferenceTime;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 
@@ -170,7 +171,7 @@ public final class ArchiveTs {
             ParsedArchiveTimestamp mark, TimeStampToken tst, CMSSignedData tstCms, SignerInformation tstSi)
             throws Exception {
         var genTimeDate = tst.getTimeStampInfo().getGenTime();
-        mark.genTime = genTimeDate != null ? genTimeDate.toInstant() : null;
+        mark.genTime = genTimeDate != null ? ReferenceTime.truncate(genTimeDate.toInstant()) : null;
         mark.imprintAlgOid = tst.getTimeStampInfo().getMessageImprintAlgOID().getId();
         mark.recordedImprint = tst.getTimeStampInfo().getMessageImprintDigest();
 

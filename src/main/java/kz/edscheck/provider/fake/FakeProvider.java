@@ -61,12 +61,12 @@ public final class FakeProvider implements VerificationProvider {
         ParsedContainer parsed = Parsing.parseContainer(container, trustCerts);
         List<SignerVerification> signers = new ArrayList<>();
         for (ParsedSigner ps : parsed.signers()) {
-            signers.add(signer(ps));
+            signers.add(signer(ps, request.checkTime()));
         }
         return new ProviderResult(parsed.encoding(), signers);
     }
 
-    private SignerVerification signer(ParsedSigner ps) {
+    private SignerVerification signer(ParsedSigner ps, Instant checkTime) {
         FakeScenario scenario = scenarios.getOrDefault(ps.index(), defaultScenario);
         TimestampInfo timestampInfo = timestamp(ps, scenario);
         Map<Stage, StageOutcome> outcomes = new EnumMap<>(Stage.class);
@@ -75,7 +75,7 @@ public final class FakeProvider implements VerificationProvider {
         outcomes.put(Stage.REVOCATION, StageOutcome.of(scenario.revocation)
             .detail(scenario.revocationDetail)
             .source(scenario.revocationSource)
-            .validFrom(revocationValidFrom(scenario, timestampInfo))
+            .validFrom(revocationValidFrom(scenario, timestampInfo, checkTime))
             .validUntil(scenario.revocationValidUntil)
             .build());
 
@@ -89,11 +89,12 @@ public final class FakeProvider implements VerificationProvider {
             ps.signedAttrsDerOrdered());
     }
 
-    private static Instant revocationValidFrom(FakeScenario scenario, TimestampInfo timestampInfo) {
+    private static Instant revocationValidFrom(
+            FakeScenario scenario, TimestampInfo timestampInfo, Instant checkTime) {
         if (scenario.revocationValidFrom != null) {
             return scenario.revocationValidFrom;
         }
-        return timestampInfo.genTime() != null ? timestampInfo.genTime() : Instant.now();
+        return timestampInfo.genTime() != null ? timestampInfo.genTime() : checkTime;
     }
 
     private TimestampInfo timestamp(ParsedSigner ps, FakeScenario scenario) {
