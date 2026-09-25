@@ -654,7 +654,7 @@ public final class JceVerificationProvider implements VerificationProvider {
     private static boolean hasApplicableRevocationMaterial(
             X509Certificate target, List<byte[]> rootCrlBlobs, List<byte[]> ownCrlBlobs,
             Attribute unsignedRevocationValues, List<X509Certificate> containerCerts,
-            List<X509Certificate> trust, String crlPath) {
+            List<X509Certificate> trust, ExternalCrl externalCrl) {
         if (hasApplicableSignedDataCrls(rootCrlBlobs, target, containerCerts, trust)) {
             return true;
         }
@@ -667,7 +667,7 @@ public final class JceVerificationProvider implements VerificationProvider {
             return true;
         }
 
-        return crlPath != null;
+        return externalCrl.covers(target);
     }
 
     private static boolean hasApplicableSignedDataCrls(
@@ -733,9 +733,18 @@ public final class JceVerificationProvider implements VerificationProvider {
 
     public List<OnlineRevocationRequest> onlineRevocationRequests(
             VerificationRequest request, ParsedContainer parsed, List<X509Certificate> trust) {
+        return onlineRevocationRequests(request, parsed, trust, externalCrl(request));
+    }
+
+    private static ExternalCrl externalCrl(VerificationRequest request) {
+        return ExternalCrl.load(request.trust().crls().isEmpty() ? null : request.trust().crls().get(0));
+    }
+
+    private List<OnlineRevocationRequest> onlineRevocationRequests(
+            VerificationRequest request, ParsedContainer parsed, List<X509Certificate> trust,
+            ExternalCrl externalCrl) {
         boolean ignoreTruststore = request.ignoreTruststore();
         List<X509Certificate> containerCerts = parsed.containerCerts();
-        String crlPath = request.trust().crls().isEmpty() ? null : request.trust().crls().get(0);
 
         List<OnlineRevocationRequest> requests = new ArrayList<>();
         for (ParsedSigner ps : parsed.signers()) {
@@ -754,9 +763,9 @@ public final class JceVerificationProvider implements VerificationProvider {
             String signerLabel = label(ps);
 
             addRequestIfNeeded(requests, signerCert, parsed.crlBlobs(), List.of(), signerRevAttr,
-                containerCerts, trust, crlPath, signerDigestOid, signerLabel, ps.index(), Stage.REVOCATION);
+                containerCerts, trust, externalCrl, signerDigestOid, signerLabel, ps.index(), Stage.REVOCATION);
             addCaPathRequests(requests, signerCert, containerCerts, trust, refTime, ignoreTruststore,
-                parsed.crlBlobs(), crlPath, signerDigestOid, signerLabel, ps.index(), Stage.CHAIN);
+                parsed.crlBlobs(), externalCrl, signerDigestOid, signerLabel, ps.index(), Stage.CHAIN);
 
             if (!ps.hasTimestamp() || ps.tsaCertRaw() == null) {
                 continue;
@@ -767,9 +776,9 @@ public final class JceVerificationProvider implements VerificationProvider {
             TstFacts tstFacts = tstFacts(ps);
             if (tstFacts != null) {
                 addRequestIfNeeded(requests, tsaCert, parsed.crlBlobs(), ps.tstCrlBlobs(), tstFacts.revAttr(),
-                    tsaPool, trust, crlPath, tstFacts.digestOid(), tsaLabel, ps.index(), Stage.TIMESTAMP);
+                    tsaPool, trust, externalCrl, tstFacts.digestOid(), tsaLabel, ps.index(), Stage.TIMESTAMP);
                 addCaPathRequests(requests, tsaCert, tsaPool, trust, refTime, ignoreTruststore,
-                    parsed.crlBlobs(), crlPath, tstFacts.digestOid(), tsaLabel, ps.index(), Stage.TIMESTAMP);
+                    parsed.crlBlobs(), externalCrl, tstFacts.digestOid(), tsaLabel, ps.index(), Stage.TIMESTAMP);
             }
 
             for (ArchiveTs.ParsedArchiveTimestamp mark : ps.archiveMarks()) {
@@ -785,10 +794,10 @@ public final class JceVerificationProvider implements VerificationProvider {
                     continue;
                 }
                 addRequestIfNeeded(requests, mark.tsaCert, parsed.crlBlobs(), List.of(), markFacts.revAttr(),
-                    markPool, trust, crlPath, markFacts.digestOid(), markLabel, ps.index(),
+                    markPool, trust, externalCrl, markFacts.digestOid(), markLabel, ps.index(),
                     Stage.ARCHIVE_TIMESTAMP);
                 addCaPathRequests(requests, mark.tsaCert, markPool, trust, mark.genTime, ignoreTruststore,
-                    parsed.crlBlobs(), crlPath, markFacts.digestOid(), markLabel, ps.index(),
+                    parsed.crlBlobs(), externalCrl, markFacts.digestOid(), markLabel, ps.index(),
                     Stage.ARCHIVE_TIMESTAMP);
             }
         }
@@ -799,6 +808,7 @@ public final class JceVerificationProvider implements VerificationProvider {
             VerificationRequest request, List<PadesSignatureObject> objects, byte[] fileBytes,
             PadesDssMaterial dss) {
         List<X509Certificate> trust = ManifestTrust.loadCertificates(request.trust().roots());
+        ExternalCrl externalCrl = externalCrl(request);
         List<OnlineRevocationRequest> requests = new ArrayList<>();
         int index = 0;
         for (PadesSignatureObject object : objects) {
@@ -808,7 +818,7 @@ public final class JceVerificationProvider implements VerificationProvider {
             try {
                 ParsedContainer parsed = PadesParsing.toParsedContainer(
                     new PadesSignatureInput(index, object, objects, fileBytes, dss), trust);
-                requests.addAll(onlineRevocationRequests(request, parsed, trust));
+                requests.addAll(onlineRevocationRequests(request, parsed, trust, externalCrl));
             } catch (RuntimeException e) {
                 trace.v(Messages.get(MsgKey.PROVIDER_TRACE_PADES_ONLINE_SKIPPED, index + 1, rootMessage(e)));
             }
@@ -820,13 +830,13 @@ public final class JceVerificationProvider implements VerificationProvider {
     private static void addRequestIfNeeded(
             List<OnlineRevocationRequest> requests, X509Certificate target, List<byte[]> rootCrlBlobs,
             List<byte[]> ownCrlBlobs, Attribute unsignedRevocationValues, List<X509Certificate> containerCerts,
-            List<X509Certificate> trust, String crlPath, String digestOid, String label, int signerIndex,
+            List<X509Certificate> trust, ExternalCrl externalCrl, String digestOid, String label, int signerIndex,
             Stage stage) {
         if (digestOid == null) {
             return;
         }
         if (hasApplicableRevocationMaterial(
-                target, rootCrlBlobs, ownCrlBlobs, unsignedRevocationValues, containerCerts, trust, crlPath)) {
+                target, rootCrlBlobs, ownCrlBlobs, unsignedRevocationValues, containerCerts, trust, externalCrl)) {
             return;
         }
         X509Certificate issuer = findBySubject(target.getIssuerX500Principal(), trust, containerCerts);
@@ -839,7 +849,7 @@ public final class JceVerificationProvider implements VerificationProvider {
     private static void addCaPathRequests(
             List<OnlineRevocationRequest> requests, X509Certificate pathTarget,
             List<X509Certificate> containerCerts, List<X509Certificate> trust, Instant refTime,
-            boolean ignoreTruststore, List<byte[]> rootCrlBlobs, String crlPath, String digestOid,
+            boolean ignoreTruststore, List<byte[]> rootCrlBlobs, ExternalCrl externalCrl, String digestOid,
             String labelPrefix, int signerIndex, Stage stage) {
         List<X509Certificate> path;
         try {
@@ -850,7 +860,7 @@ public final class JceVerificationProvider implements VerificationProvider {
         for (int i = 0; i < path.size(); i++) {
             X509Certificate ca = path.get(i);
             String caLabel = labelPrefix + Messages.get(MsgKey.PROVIDER_LABEL_INTERMEDIATE_CA_SUFFIX, i + 1);
-            addRequestIfNeeded(requests, ca, rootCrlBlobs, List.of(), null, containerCerts, trust, crlPath,
+            addRequestIfNeeded(requests, ca, rootCrlBlobs, List.of(), null, containerCerts, trust, externalCrl,
                 digestOid, caLabel, signerIndex, stage);
         }
     }

@@ -19,6 +19,7 @@ import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
 import kz.edscheck.provider.OnlineRevocationRequest;
 import kz.edscheck.provider.jce.EmbeddedRevocation;
+import kz.edscheck.provider.jce.ExternalCrl;
 import kz.edscheck.provider.jce.JceVerificationProvider.AnchorInfo;
 import kz.edscheck.trust.ActiveBackend;
 import kz.edscheck.trust.ManifestTrust;
@@ -33,7 +34,8 @@ public final class XmlOnlineRequests {
         try {
             List<X509Certificate> trust = ManifestTrust.loadCertificates(request.trust().roots());
             boolean ignoreTruststore = request.ignoreTruststore();
-            String crlPath = request.trust().crls().isEmpty() ? null : request.trust().crls().get(0);
+            ExternalCrl externalCrl =
+                ExternalCrl.load(request.trust().crls().isEmpty() ? null : request.trust().crls().get(0));
 
             Document doc = XmlFormatDetector.parseSecurely(container);
             DetectedXml detected = XmlFormatDetector.detect(doc);
@@ -50,10 +52,10 @@ public final class XmlOnlineRequests {
                     return List.of();
                 }
                 String label = Messages.get(MsgKey.PROVIDER_LABEL_SIGNATURE, 1);
-                addSharedTargetRequest(requests, signerCert, List.of(), List.of(), crlPath, containerCerts, trust,
+                addSharedTargetRequest(requests, signerCert, List.of(), List.of(), externalCrl, containerCerts, trust,
                     label, 0, Stage.REVOCATION);
                 addCaPathRequests(requests, signerCert, containerCerts, trust, Instant.now(), ignoreTruststore,
-                    List.of(), List.of(), crlPath, label, 0, Stage.CHAIN);
+                    List.of(), List.of(), externalCrl, label, 0, Stage.CHAIN);
                 return requests;
             }
 
@@ -71,10 +73,10 @@ public final class XmlOnlineRequests {
                 Instant refTime = peekGenTime(ps.signatureTimestampToken());
                 String label = Messages.get(MsgKey.PROVIDER_LABEL_SIGNATURE, ps.index() + 1);
 
-                addSharedTargetRequest(requests, signerCert, ps.ocspValues(), ps.crlValues(), crlPath, containerCerts,
+                addSharedTargetRequest(requests, signerCert, ps.ocspValues(), ps.crlValues(), externalCrl, containerCerts,
                     trust, label, ps.index(), Stage.REVOCATION);
                 addCaPathRequests(requests, signerCert, containerCerts, trust, refTime, ignoreTruststore,
-                    ps.ocspValues(), ps.crlValues(), crlPath, label, ps.index(), Stage.CHAIN);
+                    ps.ocspValues(), ps.crlValues(), externalCrl, label, ps.index(), Stage.CHAIN);
 
                 if (ps.signatureTimestampToken() != null) {
                     XmlCrypto.TsaCertInfo tsaInfo = XmlCrypto.peekTsaCert(ps.signatureTimestampToken());
@@ -82,10 +84,10 @@ public final class XmlOnlineRequests {
                         List<X509Certificate> tsaPool = new ArrayList<>(containerCerts);
                         tsaPool.addAll(tsaInfo.tsaCerts());
                         String tsaLabel = label + Messages.get(MsgKey.PROVIDER_LABEL_TSA_CERT_SUFFIX);
-                        addSharedTargetRequest(requests, tsaInfo.tsaCert(), ps.ocspValues(), ps.crlValues(), crlPath,
+                        addSharedTargetRequest(requests, tsaInfo.tsaCert(), ps.ocspValues(), ps.crlValues(), externalCrl,
                             tsaPool, trust, tsaLabel, ps.index(), Stage.TIMESTAMP);
                         addCaPathRequests(requests, tsaInfo.tsaCert(), tsaPool, trust, refTime, ignoreTruststore,
-                            ps.ocspValues(), ps.crlValues(), crlPath, tsaLabel, ps.index(), Stage.TIMESTAMP);
+                            ps.ocspValues(), ps.crlValues(), externalCrl, tsaLabel, ps.index(), Stage.TIMESTAMP);
                     }
                 }
 
@@ -96,11 +98,11 @@ public final class XmlOnlineRequests {
                     List<X509Certificate> markPool = new ArrayList<>(containerCerts);
                     markPool.addAll(mark.tsaCerts());
                     String markLabel = label + Messages.get(MsgKey.PROVIDER_LABEL_ARCHIVE_MARK_SUFFIX, mark.position() + 1);
-                    addSharedTargetRequest(requests, mark.tsaCert(), mark.ocspBag(), mark.crlBag(), crlPath, markPool,
+                    addSharedTargetRequest(requests, mark.tsaCert(), mark.ocspBag(), mark.crlBag(), externalCrl, markPool,
                         trust, markLabel + Messages.get(MsgKey.PROVIDER_LABEL_TSA_CERT_SUFFIX), ps.index(),
                         Stage.ARCHIVE_TIMESTAMP);
                     addCaPathRequests(requests, mark.tsaCert(), markPool, trust, mark.genTime(), ignoreTruststore,
-                        mark.ocspBag(), mark.crlBag(), crlPath, markLabel, ps.index(), Stage.ARCHIVE_TIMESTAMP);
+                        mark.ocspBag(), mark.crlBag(), externalCrl, markLabel, ps.index(), Stage.ARCHIVE_TIMESTAMP);
                 }
             }
             return requests;
@@ -134,7 +136,7 @@ public final class XmlOnlineRequests {
 
     private static void addSharedTargetRequest(
             List<OnlineRevocationRequest> requests, X509Certificate target, List<byte[]> ocspBlobs,
-            List<byte[]> crlBlobs, String crlPath, List<X509Certificate> containerCerts,
+            List<byte[]> crlBlobs, ExternalCrl externalCrl, List<X509Certificate> containerCerts,
             List<X509Certificate> trust, String label, int signerIndex, Stage stage) {
         X509Certificate issuerCert = kz.edscheck.provider.jce.JceVerificationProvider.findBySubject(
             target.getIssuerX500Principal(), trust, containerCerts);
@@ -165,7 +167,8 @@ public final class XmlOnlineRequests {
         } catch (Exception ignored) {
 
         }
-        if (crlPath != null) {
+
+        if (externalCrl.covers(target)) {
             return;
         }
         addRequestForUncoveredTarget(requests, target, containerCerts, trust, label, signerIndex, stage);
@@ -185,7 +188,7 @@ public final class XmlOnlineRequests {
     private static void addCaPathRequests(
             List<OnlineRevocationRequest> requests, X509Certificate pathTarget,
             List<X509Certificate> containerCerts, List<X509Certificate> trust, Instant refTime,
-            boolean ignoreTruststore, List<byte[]> ocspBlobs, List<byte[]> crlBlobs, String crlPath,
+            boolean ignoreTruststore, List<byte[]> ocspBlobs, List<byte[]> crlBlobs, ExternalCrl externalCrl,
             String labelPrefix, int signerIndex, Stage stage) {
         List<X509Certificate> path;
         try {
@@ -196,7 +199,7 @@ public final class XmlOnlineRequests {
         for (int i = 0; i < path.size(); i++) {
             X509Certificate ca = path.get(i);
             String caLabel = labelPrefix + Messages.get(MsgKey.PROVIDER_LABEL_INTERMEDIATE_CA_SUFFIX, i + 1);
-            addSharedTargetRequest(requests, ca, ocspBlobs, crlBlobs, crlPath, containerCerts, trust, caLabel,
+            addSharedTargetRequest(requests, ca, ocspBlobs, crlBlobs, externalCrl, containerCerts, trust, caLabel,
                 signerIndex, stage);
         }
     }
