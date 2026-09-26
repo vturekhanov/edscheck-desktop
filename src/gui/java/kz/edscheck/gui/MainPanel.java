@@ -598,13 +598,17 @@ public final class MainPanel extends JPanel {
         resultsContainer.repaint();
     }
 
+    private static Color mutedForeground() {
+        return new Color(UIManager.getColor("Label.disabledForeground").getRGB(), true);
+    }
+
     private void showEmptyStateHint() {
         resultsContainer.removeAll();
         JLabel hint = new JLabel("<html><div style=\"text-align:center\">"
             + GuiMessages.get(GuiMsgKey.EMPTY_STATE_HINT) + "</div></html>");
         hint.setHorizontalAlignment(SwingConstants.CENTER);
         hint.setAlignmentX(Component.CENTER_ALIGNMENT);
-        hint.setForeground(UIManager.getColor("Label.disabledForeground"));
+        hint.setForeground(mutedForeground());
 
         MouseAdapter opener = new MouseAdapter() {
             @Override
@@ -624,7 +628,7 @@ public final class MainPanel extends JPanel {
             JLabel warningText = new JLabel("<html><div style=\"text-align:center\">"
                 + GuiMessages.get(GuiMsgKey.EMPTY_STATE_INFORMATIONAL_WARNING) + "</div></html>");
 
-            warningText.setForeground(UIManager.getColor("Label.disabledForeground"));
+            warningText.setForeground(mutedForeground());
             warningText.setHorizontalAlignment(SwingConstants.CENTER);
             warningText.setAlignmentX(Component.CENTER_ALIGNMENT);
             resultsContainer.add(warningText);
