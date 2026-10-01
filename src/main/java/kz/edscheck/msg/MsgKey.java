@@ -228,6 +228,7 @@ public enum MsgKey {
 
     ENGINE_PROVIDER_STAGE_UNSUPPORTED("engine.provider_stage_unsupported", 0),
     ENGINE_STAGE_NO_RESULT("engine.stage_no_result", 0),
+    ENGINE_DOCUMENT_FOR_ATTACHED("engine.document_for_attached", 0),
 
     PARSING_CERTS_READ_FAILED("parsing.certs_read_failed", 1),
     PARSING_NO_SIGNERS("parsing.no_signers", 0),
@@ -240,6 +241,7 @@ public enum MsgKey {
     ARCHIVE_TS_NO_ATS_HASH_INDEX("archive_ts.no_ats_hash_index", 0),
     ARCHIVE_TS_ATS_HASH_INDEX_PARSE_FAILED("archive_ts.ats_hash_index_parse_failed", 1),
     ARCHIVE_TS_IMPRINT_NO_MESSAGE_DIGEST("archive_ts.imprint_no_message_digest", 0),
+    ARCHIVE_TS_IMPRINT_NO_CONTENT_DIGEST("archive_ts.imprint_no_content_digest", 1),
     ARCHIVE_TS_CERT_HASHES_MISMATCH("archive_ts.cert_hashes_mismatch", 0),
     ARCHIVE_TS_CRL_HASHES_MISMATCH("archive_ts.crl_hashes_mismatch", 0),
     ARCHIVE_TS_ATTR_HASHES_MISMATCH("archive_ts.attr_hashes_mismatch", 0),
@@ -379,6 +381,7 @@ public enum MsgKey {
     XML_DUPLICATE_ID("xml.duplicate_id", 1),
     XML_SIGNED_PROPERTIES_NOT_COVERED("xml.signed_properties_not_covered", 0),
     XML_XPATH_FILTER2_NOT_SUPPORTED("xml.xpath_filter2_not_supported", 1),
+    XML_XPATH_FILTER2_NON_TEXT_CONTENT("xml.xpath_filter2_non_text_content", 0),
     XML_FILE_TOO_LARGE("xml.file_too_large", 1),
 
     XML_SIGNING_CERT_DIGEST_ALGORITHM_UNKNOWN("xml.signing_cert_digest_algorithm_unknown", 1),

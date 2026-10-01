@@ -3,11 +3,14 @@ package kz.edscheck.xml;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.w3c.dom.Text;
 
 import kz.edscheck.errors.ContainerException;
 import kz.edscheck.msg.Messages;
@@ -15,8 +18,14 @@ import kz.edscheck.msg.MsgKey;
 
 final class XmlSecurityChecks {
     static final String XPATH_FILTER2_NS = "http://www.w3.org/2002/06/xmldsig-filter2";
-    private static final String NARROW_XPATH_FILTER2_EXPRESSION =
-        "//*[local-name()='Signature' and namespace-uri()='http://www.w3.org/2000/09/xmldsig#']";
+
+    private static final String XPATH_FILTER2_FORM_BY_LOCAL_NAME =
+        "//*[local-name()='Signature' and namespace-uri()='" + XmlNamespaces.XMLDSIG + "']";
+
+    private static final Pattern XPATH_FILTER2_FORM_DESCENDANT =
+        Pattern.compile("/descendant::([A-Za-z_][A-Za-z0-9_]*):Signature");
+
+    private static final Pattern XPATH_WHITESPACE = Pattern.compile("[ \\t\\r\\n]+");
 
     private XmlSecurityChecks() {
     }
@@ -104,8 +113,8 @@ final class XmlSecurityChecks {
             for (int j = 0; j < xpathNodes.getLength(); j++) {
                 Element xpath = (Element) xpathNodes.item(j);
                 String filterAttr = xpath.getAttribute("Filter");
-                String expr = normalizeWhitespace(xpath.getTextContent());
-                if (!"subtract".equals(filterAttr) || !NARROW_XPATH_FILTER2_EXPRESSION.equals(expr)) {
+                String expr = normalizeWhitespace(expressionAsEngineReadsIt(xpath));
+                if (!"subtract".equals(filterAttr) || !isRecognizedForm(xpath, expr)) {
                     throw new ContainerException(Messages.get(MsgKey.XML_XPATH_FILTER2_NOT_SUPPORTED,
                         "Filter=\"" + filterAttr + "\" " + expr));
                 }
@@ -113,8 +122,27 @@ final class XmlSecurityChecks {
         }
     }
 
+    private static String expressionAsEngineReadsIt(Element xpath) {
+        StringBuilder text = new StringBuilder();
+        for (Node child = xpath.getFirstChild(); child != null; child = child.getNextSibling()) {
+            if (child.getNodeType() != Node.TEXT_NODE) {
+                throw new ContainerException(Messages.get(MsgKey.XML_XPATH_FILTER2_NON_TEXT_CONTENT));
+            }
+            text.append(((Text) child).getData());
+        }
+        return text.toString();
+    }
+
+    private static boolean isRecognizedForm(Element xpath, String expr) {
+        if (XPATH_FILTER2_FORM_BY_LOCAL_NAME.equals(expr)) {
+            return true;
+        }
+        Matcher m = XPATH_FILTER2_FORM_DESCENDANT.matcher(expr);
+        return m.matches() && XmlNamespaces.XMLDSIG.equals(xpath.lookupNamespaceURI(m.group(1)));
+    }
+
     private static String normalizeWhitespace(String text) {
-        return text == null ? "" : text.strip().replaceAll("\\s+", " ");
+        return XPATH_WHITESPACE.matcher(text).replaceAll(" ").replaceAll("^ | $", "");
     }
 
     private static void checkSignedPropertiesActuallyCovered(Document doc, ParsedXmlSignature signature) {

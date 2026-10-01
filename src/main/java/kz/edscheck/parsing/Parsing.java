@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,7 +46,9 @@ import org.bouncycastle.asn1.x500.style.BCStyle;
 import org.bouncycastle.asn1.x509.PolicyInformation;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cms.CMSException;
 import org.bouncycastle.cms.CMSSignedData;
+import org.bouncycastle.cms.CMSTypedData;
 import org.bouncycastle.cms.SignerInformation;
 import org.bouncycastle.tsp.TimeStampToken;
 import org.bouncycastle.util.Store;
@@ -131,13 +134,15 @@ public final class Parsing {
     public static ParsedContainer parseContainer(byte[] raw, List<X509Certificate> extraCerts) {
         Decoded d = decodeForParsing(raw, extraCerts);
         return assembleParsedContainer(
-            d.encoding(), d.der(), d.signerInfos(), d.certStore(), d.containerCerts(), d.bySubject());
+            d.encoding(), d.der(), d.signerInfos(), d.certStore(), d.containerCerts(), d.bySubject(),
+            embeddedContentDigests(d));
     }
 
     public static ParsedContainer parseContainer(
             byte[] raw, List<X509Certificate> extraCerts, DocumentSource document) {
         Decoded d = decodeForParsing(raw, extraCerts);
         Collection<SignerInformation> signerInfos = d.signerInfos();
+        Map<String, byte[]> contentDigests = Map.of();
         if (document != null && d.sd().getSignedContent() == null) {
             Map<String, MessageDigest> mdByOid = neededDigestAlgorithms(signerInfos);
             if (!mdByOid.isEmpty()) {
@@ -147,27 +152,32 @@ public final class Parsing {
                     throw new ContainerException(
                         Messages.get(MsgKey.CONTAINER_DOCUMENT_READ_FAILED, e.getMessage()), e);
                 }
-                Map<String, byte[]> digestsByOid = new LinkedHashMap<>();
-                for (Map.Entry<String, MessageDigest> e : mdByOid.entrySet()) {
-                    digestsByOid.put(e.getKey(), e.getValue().digest());
-                }
-                signerInfos = bindDigests(signerInfos, d.der(), digestsByOid);
+                contentDigests = Digests.finish(mdByOid);
+                signerInfos = bindDigests(signerInfos, d.der(), contentDigests);
             }
+        } else {
+            contentDigests = embeddedContentDigests(d);
         }
         return assembleParsedContainer(
-            d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject());
+            d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject(),
+            contentDigests);
     }
 
     public static ParsedContainer parseContainer(
             byte[] raw, List<X509Certificate> extraCerts, Map<String, byte[]> precomputedDigests) {
         Decoded d = decodeForParsing(raw, extraCerts);
         Collection<SignerInformation> signerInfos = d.signerInfos();
+        Map<String, byte[]> contentDigests;
         if (precomputedDigests != null && !precomputedDigests.isEmpty()
                 && d.sd().getSignedContent() == null) {
             signerInfos = bindDigests(signerInfos, d.der(), precomputedDigests);
+            contentDigests = precomputedDigests;
+        } else {
+            contentDigests = embeddedContentDigests(d);
         }
         return assembleParsedContainer(
-            d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject());
+            d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject(),
+            contentDigests);
     }
 
     public static ParsedContainer parseByteRange(
@@ -175,28 +185,53 @@ public final class Parsing {
         Decoded d = decodeForParsing(cms, extraCerts);
         Collection<SignerInformation> signerInfos = d.signerInfos();
         Map<String, MessageDigest> mdByOid = neededDigestAlgorithms(signerInfos);
+        Map<String, byte[]> contentDigests = Map.of();
         if (!mdByOid.isEmpty()) {
-            Map<String, byte[]> digestsByOid = new LinkedHashMap<>();
-            for (Map.Entry<String, MessageDigest> e : mdByOid.entrySet()) {
-                MessageDigest md = e.getValue();
+            for (MessageDigest md : mdByOid.values()) {
                 md.update(fileBytes, byteRange[0], byteRange[1]);
                 md.update(fileBytes, byteRange[2], byteRange[3]);
-                digestsByOid.put(e.getKey(), md.digest());
             }
-            signerInfos = bindDigests(signerInfos, d.der(), digestsByOid);
+            contentDigests = Digests.finish(mdByOid);
+            signerInfos = bindDigests(signerInfos, d.der(), contentDigests);
         }
         return assembleParsedContainer(
-            d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject());
+            d.encoding(), d.der(), signerInfos, d.certStore(), d.containerCerts(), d.bySubject(),
+            contentDigests);
     }
 
     public static ParsedContainer parseAttached(DocumentSource container, List<X509Certificate> extraCerts) {
         AttachedSplitter.Split split;
         try {
-            split = AttachedSplitter.trySplit(container);
+            split = AttachedSplitter.trySplit(container, Parsing::archiveDigestAlgs);
         } catch (AttachedSplitter.SplitFailedException | IOException e) {
             return parseContainer(readAllBytesForFallback(container), extraCerts);
         }
         return parseContainer(split.skeleton(), extraCerts, split.digestsByOid());
+    }
+
+    private static Set<String> archiveDigestAlgs(byte[] skeleton) {
+        try {
+            return ArchiveTs.contentDigestAlgsNeeded(new CMSSignedData(skeleton).getSignerInfos().getSigners());
+        } catch (Exception e) {
+            return Set.of();
+        }
+    }
+
+    private static Map<String, byte[]> embeddedContentDigests(Decoded d) {
+        CMSTypedData content = d.sd().getSignedContent();
+        if (content == null) {
+            return Map.of();
+        }
+        Map<String, MessageDigest> mdByOid = Digests.forOids(ArchiveTs.contentDigestAlgsNeeded(d.signerInfos()));
+        if (mdByOid.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            content.write(Digests.sink(mdByOid.values()));
+        } catch (IOException | CMSException e) {
+            return Map.of();
+        }
+        return Digests.finish(mdByOid);
     }
 
     private static byte[] readAllBytesForFallback(DocumentSource container) {
@@ -256,7 +291,7 @@ public final class Parsing {
     private static ParsedContainer assembleParsedContainer(
             Encoding encoding, byte[] der, Collection<SignerInformation> signerInfos,
             Store<X509CertificateHolder> certStore, List<X509Certificate> containerCerts,
-            Map<X500Principal, X509Certificate> bySubject) {
+            Map<X500Principal, X509Certificate> bySubject, Map<String, byte[]> contentDigests) {
         SignedDataContext sdContext = signedDataContext(der);
 
         boolean hasRevFromCrls = !sdContext.crlBlobs().isEmpty();
@@ -276,7 +311,7 @@ public final class Parsing {
             TstInfo tst = timestampFromUnsigned(si);
             boolean hasRev = hasUnsignedAttr(si, OID_REVOCATION_VALUES) || hasRevFromCrls;
             EssBinding ess = signingCertificateBinding(si);
-            ArchiveData archive = archiveData(si, containerCerts, sdContext);
+            ArchiveData archive = archiveData(si, containerCerts, sdContext, contentDigests);
             anyTs = anyTs || tst.present();
             anyRev = anyRev || hasRev;
             anyArchive = anyArchive || archive.info().count() > 0 || archive.info().legacyCount() > 0;
@@ -305,29 +340,26 @@ public final class Parsing {
     }
 
     static Map<String, MessageDigest> neededDigestAlgorithms(Collection<SignerInformation> signerInfos) {
-        Map<String, MessageDigest> mdByOid = new LinkedHashMap<>();
+        Set<String> oids = new LinkedHashSet<>();
         for (SignerInformation si : signerInfos) {
-            String oid = si.getDigestAlgOID();
-            if (oid == null || mdByOid.containsKey(oid)) {
-                continue;
-            }
-            String jceName = DigestAlgorithms.jceName(oid);
-            if (jceName == null) {
-                continue;
-            }
-            try {
-                mdByOid.put(oid, MessageDigest.getInstance(jceName, ActiveBackend.current().jceProviderName()));
-            } catch (Exception e) {
-
-            }
+            oids.add(si.getDigestAlgOID());
         }
-        return mdByOid;
+        oids.addAll(ArchiveTs.contentDigestAlgsNeeded(signerInfos));
+        return Digests.forOids(oids);
     }
 
     private static Collection<SignerInformation> bindDigests(
             Collection<SignerInformation> signerInfos, byte[] der, Map<String, byte[]> digestsByOid) {
+        Set<String> signerAlgs = new HashSet<>();
+        for (SignerInformation si : signerInfos) {
+            signerAlgs.add(si.getDigestAlgOID());
+        }
         Map<String, Map<String, SignerInformation>> boundByOid = new HashMap<>();
         for (Map.Entry<String, byte[]> e : digestsByOid.entrySet()) {
+
+            if (!signerAlgs.contains(e.getKey())) {
+                continue;
+            }
             CMSSignedData keyed;
             try {
                 keyed = new CMSSignedData(Map.of(e.getKey(), e.getValue()), der);
@@ -941,7 +973,7 @@ public final class Parsing {
     }
 
     private static ArchiveData archiveData(SignerInformation si, List<X509Certificate> containerCerts,
-                                           SignedDataContext ctx) {
+                                           SignedDataContext ctx, Map<String, byte[]> contentDigests) {
         AttributeTable ut = si.getUnsignedAttributes();
         if (ut == null) {
             return new ArchiveData(ArchiveTimestampInfo.none(), List.of());
@@ -954,7 +986,7 @@ public final class Parsing {
             lastGenTime = tryParseTstGenTime(v3Values.get(v3Values.size() - 1));
         }
         List<ArchiveTs.ParsedArchiveTimestamp> marks = ArchiveTs.parseArchiveTimestamps(
-            si, containerCerts, ctx.crlBlobs(), ctx.eContentTypeDer());
+            si, containerCerts, ctx.crlBlobs(), ctx.eContentTypeDer(), contentDigests);
         return new ArchiveData(
             new ArchiveTimestampInfo(v3Values.size(), legacyCount, lastGenTime), marks);
     }

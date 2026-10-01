@@ -25,6 +25,8 @@ import kz.edscheck.pades.PadesDssMaterial;
 import kz.edscheck.pades.PadesPdf;
 import kz.edscheck.pades.PadesSignatureInput;
 import kz.edscheck.pades.PadesSignatureObject;
+import kz.edscheck.parsing.ContainerFormat;
+import kz.edscheck.parsing.Parsing;
 import kz.edscheck.provider.ProviderResult;
 import kz.edscheck.provider.SignerVerification;
 import kz.edscheck.provider.StageOutcome;
@@ -181,7 +183,15 @@ public final class VerificationEngine {
         if (XmlDetect.looksLikeXml(container)) {
             return XmlVerifier.verify(request, container, document, trace);
         }
+        requireDetachedCms(container);
         return verifyDetached(request, document, List.of(container), documentName);
+    }
+
+    private static void requireDetachedCms(byte[] container) {
+        byte[] der = Parsing.decodeContainer(container).der();
+        if (ContainerFormat.looksLikeCades(der) && ContainerFormat.isAttached(der)) {
+            throw new ContainerException(Messages.get(MsgKey.ENGINE_DOCUMENT_FOR_ATTACHED));
+        }
     }
 
     public SignedContainer verifyDetached(

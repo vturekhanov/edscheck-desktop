@@ -5,7 +5,9 @@ import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.bouncycastle.asn1.ASN1Encodable;
@@ -32,6 +34,7 @@ import org.bouncycastle.util.Store;
 import kz.edscheck.domain.ReferenceTime;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
+import kz.edscheck.trust.DigestAlgorithms;
 
 public final class ArchiveTs {
     public static final String OID_ARCHIVE_TIMESTAMP_V3 = "0.4.0.1733.2.4"; 
@@ -74,7 +77,7 @@ public final class ArchiveTs {
 
     public static List<ParsedArchiveTimestamp> parseArchiveTimestamps(
             SignerInformation si, List<X509Certificate> containerCerts,
-            List<byte[]> crlBlobs, byte[] eContentTypeDer) {
+            List<byte[]> crlBlobs, byte[] eContentTypeDer, Map<String, byte[]> contentDigests) {
         AttributeTable ut = si.getUnsignedAttributes();
         List<Object> values = archiveTsValues(ut);
         if (values.isEmpty()) {
@@ -90,20 +93,39 @@ public final class ArchiveTs {
             }
         }
         List<byte[]> nonV3Blobs = nonV3AttrBlobs(ut);
-        byte[] imprintPrefix = imprintPrefix(si, eContentTypeDer);
+        ImprintParts imprintParts = imprintParts(si, eContentTypeDer);
 
         List<ParsedArchiveTimestamp> marks = new ArrayList<>();
         for (int position = 0; position < values.size(); position++) {
             marks.add(parseOne(position, values.get(position), certBlobs, crlBlobs,
-                nonV3Blobs, marks, imprintPrefix));
+                nonV3Blobs, marks, imprintParts, contentDigests));
         }
         return marks;
+    }
+
+    public static Set<String> contentDigestAlgsNeeded(Collection<SignerInformation> signerInfos) {
+        Set<String> needed = new LinkedHashSet<>();
+        for (SignerInformation si : signerInfos) {
+            for (Object value : archiveTsValues(si.getUnsignedAttributes())) {
+                String imprintAlg;
+                try {
+                    imprintAlg = new TimeStampToken(ContentInfo.getInstance(value))
+                        .getTimeStampInfo().getMessageImprintAlgOID().getId();
+                } catch (Exception e) {
+                    continue;
+                }
+                if (!imprintAlg.equals(si.getDigestAlgOID()) && DigestAlgorithms.jceName(imprintAlg) != null) {
+                    needed.add(imprintAlg);
+                }
+            }
+        }
+        return needed;
     }
 
     private static ParsedArchiveTimestamp parseOne(
             int position, Object value, List<byte[]> certBlobs, List<byte[]> crlBlobs,
             List<byte[]> nonV3Blobs, List<ParsedArchiveTimestamp> earlierMarks,
-            byte[] imprintPrefix) {
+            ImprintParts imprintParts, Map<String, byte[]> contentDigests) {
         ParsedArchiveTimestamp mark = new ParsedArchiveTimestamp(position);
         mark.certBlobs = certBlobs;
         mark.crlBlobs = crlBlobs;
@@ -159,11 +181,20 @@ public final class ArchiveTs {
             return mark;
         }
 
-        if (imprintPrefix == null) {
+        if (imprintParts == null) {
             mark.parseError = Messages.get(MsgKey.ARCHIVE_TS_IMPRINT_NO_MESSAGE_DIGEST);
             return mark;
         }
-        mark.imprintBlob = concat(imprintPrefix, atsIndexDer);
+        byte[] signedDataHash = imprintParts.signerDigestOid().equals(mark.imprintAlgOid)
+            ? imprintParts.messageDigest() : contentDigests.get(mark.imprintAlgOid);
+        if (signedDataHash == null) {
+            String jceName = DigestAlgorithms.jceName(mark.imprintAlgOid);
+            mark.parseError = Messages.get(MsgKey.ARCHIVE_TS_IMPRINT_NO_CONTENT_DIGEST,
+                jceName != null ? jceName : mark.imprintAlgOid);
+            return mark;
+        }
+        mark.imprintBlob = concat(imprintParts.eContentTypeDer(), signedDataHash, imprintParts.signerFields(),
+            atsIndexDer);
         return mark;
     }
 
@@ -354,18 +385,21 @@ public final class ArchiveTs {
         return out;
     }
 
-    private static byte[] imprintPrefix(SignerInformation si, byte[] eContentTypeDer) {
+    private record ImprintParts(
+            byte[] eContentTypeDer, String signerDigestOid, byte[] messageDigest, byte[] signerFields) {
+    }
+
+    private static ImprintParts imprintParts(SignerInformation si, byte[] eContentTypeDer) {
         AttributeTable at = si.getSignedAttributes();
-        if (at == null) {
+        if (at == null || eContentTypeDer == null) {
             return null;
         }
         Attribute mdAttr = at.get(CMSAttributes.messageDigest);
         if (mdAttr == null || mdAttr.getAttrValues().size() == 0) {
             return null;
         }
-        byte[] messageDigest;
         try {
-            messageDigest = ASN1OctetString.getInstance(mdAttr.getAttrValues().getObjectAt(0)).getOctets();
+            byte[] messageDigest = ASN1OctetString.getInstance(mdAttr.getAttrValues().getObjectAt(0)).getOctets();
             var asnSi = si.toASN1Structure();
             byte[] versionDer = derEncoded(asnSi.getVersion());
             byte[] sidDer = derEncoded(asnSi.getSID());
@@ -373,8 +407,8 @@ public final class ArchiveTs {
             byte[] signedAttrsDer = signedAttrsRawBytes(at);
             byte[] sigAlgDer = derEncoded(asnSi.getDigestEncryptionAlgorithm());
             byte[] signatureDer = derEncoded(asnSi.getEncryptedDigest());
-            return concat(eContentTypeDer, messageDigest, versionDer, sidDer, digestAlgDer,
-                signedAttrsDer, sigAlgDer, signatureDer);
+            return new ImprintParts(eContentTypeDer, si.getDigestAlgOID(), messageDigest,
+                concat(versionDer, sidDer, digestAlgDer, signedAttrsDer, sigAlgDer, signatureDer));
         } catch (Exception e) {
             return null;
         }

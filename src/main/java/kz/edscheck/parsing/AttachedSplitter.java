@@ -6,8 +6,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
 
 import org.bouncycastle.asn1.ASN1InputStream;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
@@ -16,10 +21,10 @@ import org.bouncycastle.asn1.cms.CMSObjectIdentifiers;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 
 import kz.edscheck.domain.DocumentSource;
+import kz.edscheck.errors.ContainerException;
 import kz.edscheck.msg.Messages;
 import kz.edscheck.msg.MsgKey;
-import kz.edscheck.trust.ActiveBackend;
-import kz.edscheck.trust.DigestAlgorithms;
+import kz.edscheck.trust.Digests;
 
 final class AttachedSplitter {
     private static final int STREAM_BUFFER = 1 << 16;
@@ -44,11 +49,26 @@ final class AttachedSplitter {
     record Split(byte[] skeleton, Map<String, byte[]> digestsByOid) {
     }
 
-    static Split trySplit(DocumentSource container) throws IOException {
+    static Split trySplit(DocumentSource container, Function<byte[], Set<String>> extraAlgs) throws IOException {
+        Split first;
         try (InputStream raw = container.open()) {
-            Counting in = new Counting(raw);
-            return split(in);
+            first = split(new Counting(raw), null);
         }
+        Set<String> missing = new LinkedHashSet<>(extraAlgs.apply(first.skeleton()));
+        missing.removeAll(first.digestsByOid().keySet());
+        Map<String, MessageDigest> extra = Digests.forOids(missing);
+        if (extra.isEmpty()) {
+            return first;
+        }
+        Split second;
+        try (InputStream raw = container.open()) {
+            second = split(new Counting(raw), extra);
+        } catch (SplitFailedException | IOException e) {
+            throw new ContainerException(Messages.get(MsgKey.CONTAINER_READ_FAILED, e.getMessage()), e);
+        }
+        Map<String, byte[]> digestsByOid = new LinkedHashMap<>(first.digestsByOid());
+        digestsByOid.putAll(second.digestsByOid());
+        return new Split(first.skeleton(), digestsByOid);
     }
 
     static void tryExtract(DocumentSource container, OutputStream out) throws IOException {
@@ -122,7 +142,7 @@ final class AttachedSplitter {
         }
     }
 
-    private static Split split(Counting in) throws IOException {
+    private static Split split(Counting in, Map<String, MessageDigest> digests) throws IOException {
         Tlv outer = readTagLen(in);
         requireTag(outer, 0x30, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_CONTENT_INFO_SEQUENCE));
 
@@ -150,7 +170,7 @@ final class AttachedSplitter {
         Tlv digestAlgsTlv = readTagLen(in);
         requireTag(digestAlgsTlv, 0x31, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_DIGEST_ALGORITHMS));
         byte[] digestAlgsFull = materializeFullTlv(in, digestAlgsTlv);
-        Map<String, MessageDigest> mdByOid = digestsFromDeclaredAlgorithms(digestAlgsFull);
+        Map<String, MessageDigest> mdByOid = digests != null ? digests : digestsFromDeclaredAlgorithms(digestAlgsFull);
 
         Tlv encapTlv = readTagLen(in);
         requireTag(encapTlv, 0x30, Messages.get(MsgKey.ATTACHED_SPLITTER_EXPECT_ENCAP_CONTENT_INFO));
@@ -216,11 +236,7 @@ final class AttachedSplitter {
         closeIfIndefinite(in, outer);
 
         byte[] skeleton = buildSkeleton(oidFull, versionFull, digestAlgsFull, eContentTypeFull, tail);
-        Map<String, byte[]> digestsByOid = new LinkedHashMap<>();
-        for (Map.Entry<String, MessageDigest> e : mdByOid.entrySet()) {
-            digestsByOid.put(e.getKey(), e.getValue().digest());
-        }
-        return new Split(skeleton, digestsByOid);
+        return new Split(skeleton, Digests.finish(mdByOid));
     }
 
     private static byte[] buildSkeleton(
@@ -254,29 +270,15 @@ final class AttachedSplitter {
 
     private static Map<String, MessageDigest> digestsFromDeclaredAlgorithms(byte[] digestAlgsFullTlv) {
         ASN1Set set = readAsn1(digestAlgsFullTlv, ASN1Set.class);
-        Map<String, MessageDigest> mdByOid = new LinkedHashMap<>();
+        List<String> oids = new ArrayList<>();
         for (int i = 0; i < set.size(); i++) {
-            AlgorithmIdentifier alg;
             try {
-                alg = AlgorithmIdentifier.getInstance(set.getObjectAt(i));
-            } catch (Exception e) {
-                continue; 
-            }
-            String oid = alg.getAlgorithm().getId();
-            if (mdByOid.containsKey(oid)) {
-                continue;
-            }
-            String jceName = DigestAlgorithms.jceName(oid);
-            if (jceName == null) {
-                continue;
-            }
-            try {
-                mdByOid.put(oid, MessageDigest.getInstance(jceName, ActiveBackend.current().jceProviderName()));
+                oids.add(AlgorithmIdentifier.getInstance(set.getObjectAt(i)).getAlgorithm().getId());
             } catch (Exception e) {
 
             }
         }
-        return mdByOid;
+        return Digests.forOids(oids);
     }
 
     @SuppressWarnings("unchecked")
