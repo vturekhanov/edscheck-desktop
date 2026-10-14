@@ -68,7 +68,7 @@ if [ ! -d "$JDK_HOME/jmods" ]; then
     exit 1
 fi
 
-for tool in codesign pkgbuild hdiutil sips iconutil; do
+for tool in codesign pkgbuild hdiutil; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "ошибка: не найден '$tool' — нужны Xcode Command Line Tools (xcode-select --install)" >&2
         exit 1
@@ -94,11 +94,9 @@ FLATLAF_NATIVE="flatlaf-3.7.2-macos-arm64.dylib"
 BUILD_DIR="$REPO_ROOT/build/gui/jpackage"
 RUNTIME_DIR="$BUILD_DIR/runtime"
 INPUT_DIR="$BUILD_DIR/input"
-ICONSET_DIR="$BUILD_DIR/EDScheck.iconset"
-ICNS_FILE="$BUILD_DIR/EDScheck.icns"
 DIST_DIR="$REPO_ROOT/dist"
 
-rm -rf "$RUNTIME_DIR" "$INPUT_DIR" "$ICONSET_DIR" "$ICNS_FILE"
+rm -rf "$RUNTIME_DIR" "$INPUT_DIR"
 mkdir -p "$INPUT_DIR" "$DIST_DIR"
 
 MODULES="java.base,java.desktop,java.instrument,java.logging,java.net.http,jdk.crypto.ec,java.xml.crypto,java.naming,java.sql"
@@ -153,16 +151,7 @@ mkdir -p "$INPUT_DIR/certs"
 cp "$REPO_ROOT/certs/MANIFEST.json" "$INPUT_DIR/certs/"
 cp -R "$REPO_ROOT/certs/prod" "$INPUT_DIR/certs/prod"
 
-ICON_PNG="$REPO_ROOT/src/gui/resources/kz/edscheck/gui/icon.png"
-mkdir -p "$ICONSET_DIR"
-for spec in "16:icon_16x16.png" "32:icon_16x16@2x.png" "32:icon_32x32.png" "64:icon_32x32@2x.png" \
-            "128:icon_128x128.png" "256:icon_128x128@2x.png" "256:icon_256x256.png" \
-            "512:icon_256x256@2x.png" "512:icon_512x512.png" "1024:icon_512x512@2x.png"; do
-    size="${spec%%:*}"
-    outname="${spec#*:}"
-    sips -z "$size" "$size" "$ICON_PNG" --out "$ICONSET_DIR/$outname" >/dev/null
-done
-iconutil -c icns "$ICONSET_DIR" -o "$ICNS_FILE"
+ICNS_FILE="$REPO_ROOT/assets/gui/AppIcon.icns"
 
 if [ "$PKG_TYPE" = "dmg" ]; then
     APP_STAGE_DIR="$BUILD_DIR/app-stage"
@@ -201,6 +190,10 @@ if [ "$JPACKAGE_TYPE_ARG" = "app-image" ]; then
     RESOURCES_DIR="$JPACKAGE_DEST_ARG/EDScheck.app/Contents/Resources"
     mkdir -p "$RESOURCES_DIR/ru.lproj"
     printf '"CFBundleName" = "Проверка ЭЦП";\n"CFBundleDisplayName" = "Проверка ЭЦП";\n' > "$RESOURCES_DIR/ru.lproj/InfoPlist.strings"
+
+    cp "$REPO_ROOT/assets/gui/Assets.car" "$RESOURCES_DIR/"
+    /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AppIcon" "$APP_INFO_PLIST" 2>/dev/null \
+        || /usr/libexec/PlistBuddy -c "Set :CFBundleIconName AppIcon" "$APP_INFO_PLIST"
 
     codesign --force --deep -s - "$JPACKAGE_DEST_ARG/EDScheck.app"
 fi

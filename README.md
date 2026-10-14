@@ -147,7 +147,7 @@ kalkancrypt-0.7.6-certified.jar
 
 #### macOS
 
-Запустите только **один раз**, если раньше не устанавливались Xcode Command Line Tools. Нужны для build-macos-arm64.sh — он вызывает нативные утилиты macOS (codesign, pkgbuild, hdiutil, sips, iconutil), которых нет на чистой системе без этого пакета.
+Запустите только **один раз**, если раньше не устанавливались Xcode Command Line Tools. Нужны для build-macos-arm64.sh — он вызывает нативные утилиты macOS (codesign, pkgbuild, hdiutil), которых нет на чистой системе без этого пакета.
 ```sh
 xcode-select --install
 ```
