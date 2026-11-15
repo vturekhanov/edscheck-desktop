@@ -229,6 +229,7 @@ public enum MsgKey {
     ENGINE_PROVIDER_STAGE_UNSUPPORTED("engine.provider_stage_unsupported", 0),
     ENGINE_STAGE_NO_RESULT("engine.stage_no_result", 0),
     ENGINE_DOCUMENT_FOR_ATTACHED("engine.document_for_attached", 0),
+    CONTAINER_DETACHED_WITHOUT_DOCUMENT("container.detached_without_document", 0),
 
     PARSING_CERTS_READ_FAILED("parsing.certs_read_failed", 1),
     PARSING_NO_SIGNERS("parsing.no_signers", 0),

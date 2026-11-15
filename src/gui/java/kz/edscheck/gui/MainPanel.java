@@ -378,8 +378,7 @@ public final class MainPanel extends JPanel {
     }
 
     private static boolean isDetachedCades(byte[] bytes) {
-        return bytes.length > 0 && bytes[0] == 0x30
-            && ContainerFormat.looksLikeCades(bytes) && !ContainerFormat.isAttached(bytes);
+        return ContainerFormat.isDetachedCades(bytes);
     }
 
     private static boolean isDetachedXml(byte[] bytes) {

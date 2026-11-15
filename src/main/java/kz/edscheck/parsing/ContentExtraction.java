@@ -74,6 +74,8 @@ public final class ContentExtraction {
             throw new ContainerException(Messages.get(
                 MsgKey.CONTENT_EXTRACTION_TOO_LARGE_FOR_FALLBACK, FALLBACK_MAX_BYTES / (1024 * 1024)));
         }
+
+        bytes = ContainerFormat.toDer(bytes);
         if (!ContainerFormat.looksLikeCades(bytes)) {
             throw new ContainerException(Messages.get(MsgKey.CONTENT_EXTRACTION_UNRECOGNIZED_FORMAT));
         }

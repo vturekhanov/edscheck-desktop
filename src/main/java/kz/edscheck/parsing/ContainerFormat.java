@@ -26,6 +26,23 @@ public final class ContainerFormat {
         }
     }
 
+    public static byte[] toDer(byte[] raw) {
+        try {
+            return Parsing.decodeContainer(raw).der();
+        } catch (RuntimeException e) {
+            return raw;
+        }
+    }
+
+    public static boolean isDetachedCades(byte[] raw) {
+        byte[] der = toDer(raw);
+        try {
+            return looksLikeCades(der) && !isAttached(der);
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
     public static boolean isAttached(byte[] cmsDer) {
         ContentInfo outer = ContentInfo.getInstance(readAsn1(cmsDer));
         SignedData signedData = SignedData.getInstance(outer.getContent());

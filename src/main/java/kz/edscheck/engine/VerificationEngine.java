@@ -115,6 +115,10 @@ public final class VerificationEngine {
     }
 
     private SignedContainer verifyCms(VerificationRequest request, byte[] container) {
+
+        if (ContainerFormat.isDetachedCades(container)) {
+            throw new ContainerException(Messages.get(MsgKey.CONTAINER_DETACHED_WITHOUT_DOCUMENT));
+        }
         ProviderResult result = provider.verify(request, container);
         return assembleCmsResult(request, result);
     }

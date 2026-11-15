@@ -204,7 +204,12 @@ public final class Parsing {
         try {
             split = AttachedSplitter.trySplit(container, Parsing::archiveDigestAlgs);
         } catch (AttachedSplitter.SplitFailedException | IOException e) {
-            return parseContainer(readAllBytesForFallback(container), extraCerts);
+            byte[] raw = readAllBytesForFallback(container);
+
+            if (ContainerFormat.isDetachedCades(raw)) {
+                throw new ContainerException(Messages.get(MsgKey.CONTAINER_DETACHED_WITHOUT_DOCUMENT));
+            }
+            return parseContainer(raw, extraCerts);
         }
         return parseContainer(split.skeleton(), extraCerts, split.digestsByOid());
     }
